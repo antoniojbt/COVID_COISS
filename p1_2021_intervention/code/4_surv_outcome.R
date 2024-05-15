@@ -1,7 +1,7 @@
 ############
 # COISS paper 1
 # L. Bonifaz
-# April 2024
+# May 2024
 ############
 
 
@@ -31,31 +31,23 @@ library(pROC)
 # TO DO: continue here
 ############
 # Load a previous R session, data and objects:
-file_n <- '../data/processed/3_COISS_intervention_setup_COVID19MEXICO2021_COVID-only_COISS_only.rdata.gzip'
-ls()
-load(file_n, verbose = TRUE)
-ls()
+infile <- '../data/processed/3_desc_plots_COVID19MEXICO2021_COVID-only_COISS-only.rdata.gzip'
+load(infile, verbose = TRUE)
 data_f <- data_f # just to get rid of RStudio warnings
-str(data_f)
 dim(data_f)
+str(data_f)
+epi_head_and_tail(data_f)
+colnames(data_f)
+
 
 # For saving/naming outputs, should already come with the RData file though:
 infile_prefix <- infile_prefix
 infile_prefix
 # Otherwise manually:
-# infile_prefix <- 'COVID19MEXICO2021_COVID-only'
+# infile_prefix <- 'COVID19MEXICO2021'
 
-# Create a folder for results:
-if (!dir.exists(infile_prefix)) {
-    dir.create(infile_prefix)
-}
-
-# Save files as e.g.:
-# infile_prefix
-# file_n <- 'sum_stats'
-# suffix <- 'txt'
-# outfile <- sprintf(fmt = '%s/%s.%s', infile_prefix, file_n, suffix)
-# outfile
+outfile <- outfile
+outfile
 ############
 
 
@@ -269,87 +261,6 @@ risk_summary <- risk_table %>%
 
 # Print the risk summary table
 knitr::kable(risk_summary, caption = "Risk Table by Time Cuts and Events (Death)")
-
-
-
-############
-
-
-############
-# Simple regression setup
-
-###
-# Fit the logistic regression model
-model_1 <- glm(death ~ intervention,
-               data = data_f,
-               family = binomial
-               )
-
-# Summarize the model
-summary(model_1)
-
-# Get predicted probabilities
-predicted_probs <- predict(model_1, type = "response")
-predicted_probs
-
-# Get predicted classes (0 or 1) using a threshold of 0.5
-predicted_classes <- ifelse(predicted_probs > 0.5, 1, 0)
-
-# View the first few predicted probabilities and classes
-head(predicted_probs)
-head(predicted_classes)
-
-# Create a confusion matrix
-caret::confusionMatrix(as.factor(predicted_classes), as.factor(data_f$death))
-
-# Plot the ROC curve
-roc_curve <- roc(data_f$death, predicted_probs)
-plot(roc_curve)
-###
-
-
-###
-colnames(data_f)
-model_2 <- glm(death ~ intervention + EDAD + SEXO,
-               data = data_f,
-               family = binomial
-               )
-
-# Summarize the model
-summary(model_2)
-summary(model_1)
-###
-############
-
-
-############
-# Basic DiD
-# Fit linear model
-model_DiD <- lm(death ~ intervention * days_to_death, data = data_f)
-
-# Summarize model
-summary(model_D)
-
-# Tidy the model output
-tidy(model_DiD)
-############
-
-
-
-############
-# Diff in Diff
-# Survival?
-# # Run mixed model
-# mem <- lmer(lethality ~ ESTRATEGIA + edad + SEXO + COMORBILIDADES +
-#                 (1 | entidad_um),
-#             data = data_f)
-#
-# summary(mem)
-# plot(residuals(mem))
-
-# Predict:
-# new_data <- data.frame(fixedEffect = new_fixed_values, randomEffect = new_random_values)
-# predictions <- predict(mem, newdata = new_data, re.form = NA)  # re.form = NA to exclude random effects
 ############
 
 
@@ -357,38 +268,40 @@ tidy(model_DiD)
 #
 
 ############
-
 
 
 ############
 # The end:
-# Save one object, to eg .RData file:
+# Save objects, to eg .RData file:
+folder <- '../data/processed'
+script <- '4_surv_outcome'
+infile_prefix
+suffix <- 'rdata.gzip'
+outfile <- sprintf(fmt = '%s/%s_%s.%s', folder, script, infile_prefix, suffix)
+outfile
+
 # Check and remove objects that are not necessary to save:
-ls()
 object_sizes <- sapply(ls(), function(x) object.size(get(x)))
 object_sizes <- as.matrix(rev(sort(object_sizes))[1:10])
 object_sizes
-# rm_list <- 'xx'
-# Remove all:
-# rm(list = ls())
+objects_to_save <- (c('data_f', 'infile_prefix', 'outfile'))
 
-objects_to_save <- (c('data_f_COVID'))
-file_n <- '../data/processed/2_COISS_COVID-only.rdata.gzip'
+# Save:
 save(list = objects_to_save,
-     file = file_n,
+     file = outfile,
      compress = 'gzip'
 )
 
-# Filename to save current R session (entire workspace) data and objects at the end:
-# output_name <- 'xx'
-# suffix <- 'xx'
-# save_session <- sprintf('%s_%s.RData', output_name, suffix)
-# print(sprintf('Saving an R session image as: %s', save_session))
-# save.image(file = save_session, compress = 'gzip')
+# Remove/clean up session:
+all_objects <- ls()
+all_objects
+rm_list <- which(!all_objects %in% objects_to_save)
+all_objects[rm_list]
+rm(list = all_objects[rm_list])
+ls() # Anything defined after all_objects and objects_to_save will still be here
 
 sessionInfo()
 # q()
 
 # Next: run the script for xxx
 ############
-

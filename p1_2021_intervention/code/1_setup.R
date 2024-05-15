@@ -15,6 +15,10 @@
   # ? That's it
 # Use DGE 2021 data, which covers T0 to end of T2
 # Run as independent analyst
+
+# Univariate
+  # All, COVID-only
+  # Re-run code above for plots and stats but COVID-only
 ###
 
 
@@ -22,6 +26,11 @@
 # TO DOs:
 # Q's:
   # There are gaps between dates for start and end for T0, 1 and 2
+
+# Bivariate
+  # For COVID-only_COISS-only:
+    # COISS vs non-COISS
+    # By outcome: survivors vs non-survivors
 
 # Run as sensitivity analyses:
   # Diff in Diff
@@ -51,13 +60,12 @@
     # Clean up duplicates (max date of one year overlaps with min date of next)
     # Clarify how ID variable was created; duplicates?
     # Contact DGE, get methods document for database (collection, creation, maintenance, etc)
+  # Additional bivariate:
+    # COVID vs non-COVID
+    # Gender, age, etc
 
-  # Univariate
-    # COVID-only
-    # Re-run code above for plots and stats but COVID-only
 
-  # Bivariate
-  # COVID vs non-COVID, but not needed
+
 ###
 ############
 
