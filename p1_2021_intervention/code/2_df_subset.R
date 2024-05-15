@@ -24,43 +24,52 @@ library(tidyverse)
 
 ############
 # Load a previous R session, data and objects:
-file_n <- '../data/processed/2_COISS_COVID-only_COVID19MEXICO2021.rdata.gzip'
-load(file_n, verbose = TRUE)
+infile <- '../data/processed/1_COISS_setup.rdata.gzip'
+load(infile, verbose = TRUE)
+
 data_f <- data_f # just to get rid of RStudio warnings
-str(data_f)
 dim(data_f)
+str(data_f)
+epi_head_and_tail(data_f)
+colnames(data_f)
+
 
 # For saving/naming outputs, should already come with the RData file though:
-# infile_prefix
+infile_prefix <- infile_prefix
+infile_prefix
 # Otherwise manually:
-infile_prefix <- 'COVID19MEXICO2021_COVID-only'
+# infile_prefix <- 'COVID19MEXICO2021'
+############
+
+
+############
+# Do manually if sub-setting
+# Re-run code below as is but with subset of COVID-only rows:
+# Use "CLASIFICACION_FINAL" codes 1, 2, 3:
+data_f_COVID <- data_f[which(as.integer(data_f$CLASIFICACION_FINAL) < 4), ]
+dim(data_f)
+dim(data_f_COVID)
+
+table(data_f$CLASIFICACION_FINAL)
+table(data_f_COVID$CLASIFICACION_FINAL)
+
+# Remove objects, keep objects names so that code can be re-run as several DBs:
+data_f <- data_f_COVID
+rm(list = c('data_f_COVID'))
+
+# Check this manually:
+file_n <- 'COVID-only_COISS-only'
+# infile_prefix <- NULL
+infile_prefix <- sprintf('%s_%s', infile_prefix, file_n)
+infile_prefix
+
+# Do manually, rename outdir if sub-setting
 # Create a folder for results:
+dir()
 if (!dir.exists(infile_prefix)) {
     dir.create(infile_prefix)
 }
-
-# Save files as e.g.:
-# infile_prefix
-# file_n <- 'sum_stats'
-# suffix <- 'txt'
-# outfile <- sprintf(fmt = '%s/%s.%s', infile_prefix, file_n, suffix)
-# outfile
-############
-
-
-############
-# TO DO:
-# Univariate
-# COVID-only
-# Re-run code above for plots and stats but COVID-only
-# Pause, re-group, run regressions
-############
-
-
-############
-# Bivariate
-# COVID vs non-COVID, but not needed
-
+dir()
 ############
 
 
@@ -146,16 +155,20 @@ data_interv <- data_f %>% left_join(interv_labels[, c(2, 4)],
                                     by = c('ENTIDAD_UM'),
                                     )
 summary(as.factor(data_interv$intervention))
+data_interv$intervention <- factor(data_interv$intervention,
+                                   levels = c('non-COISS', 'COISS', 'other'),
+                                   ordered = TRUE
+                                   )
+summary(data_interv$intervention)
+str(data_interv)
+
+# Clean up:
 data_f <- data_interv
 rm(list = c('data_interv'))
 ls()
+###
 
-data_f$intervention <- factor(data_f$intervention,
-                              levels = c('non-COISS', 'COISS', 'other')
-                              # ordered = TRUE
-                              )
-summary(data_f$intervention)
-
+###
 # Plot:
 i <- 'intervention'
 file_n <- 'plots_bar'
@@ -174,7 +187,6 @@ epi_plot_cow_save(file_name = outfile, plot_grid = my_plot_grid)
 
 ############
 # Exclude 'others' (CDMX, EdoMex)
-
 epi_head_and_tail(data_f)
 colnames(data_f)
 summary(data_f$intervention)
@@ -189,39 +201,37 @@ summary(data_f_COISS$intervention)
 # Remove objects, keep objects names so that code can be re-run as several DBs:
 data_f <- data_f_COISS
 rm(list = c('data_f_COISS'))
-
-# Check this manually:
-infile_prefix <- 'COVID19MEXICO2021_COVID-only_COISS_only'
 ############
 
 
 
 ############
 # The end:
-# Save one object, to eg .RData file:
-# Check and remove objects that are not necessary to save:
-all_objects <- ls()
-all_objects
-object_sizes <- sapply(ls(), function(x) object.size(get(x)))
-object_sizes <- as.matrix(rev(sort(object_sizes))[1:10])
-object_sizes
-objects_to_save <- (c('data_f', 'infile_prefix'))
-
-
-# Save objects:
+# Save objects, to eg .RData file:
 folder <- '../data/processed'
-script <- '3_COISS_intervention_setup'
+script <- '2_df_subset'
 infile_prefix
 suffix <- 'rdata.gzip'
 outfile <- sprintf(fmt = '%s/%s_%s.%s', folder, script, infile_prefix, suffix)
 outfile
+
+# Check and remove objects that are not necessary to save:
+object_sizes <- sapply(ls(), function(x) object.size(get(x)))
+object_sizes <- as.matrix(rev(sort(object_sizes))[1:10])
+object_sizes
+objects_to_save <- (c('data_f', 'infile_prefix', 'outfile'))
+
+# Save:
 save(list = objects_to_save,
      file = outfile,
      compress = 'gzip'
-     )
+)
 
 # Remove/clean up session:
+all_objects <- ls()
+all_objects
 rm_list <- which(!all_objects %in% objects_to_save)
+all_objects[rm_list]
 rm(list = all_objects[rm_list])
 ls() # Anything defined after all_objects and objects_to_save will still be here
 
@@ -230,4 +240,3 @@ sessionInfo()
 
 # Next: run the script for xxx
 ############
-

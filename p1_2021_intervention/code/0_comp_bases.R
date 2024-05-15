@@ -128,32 +128,38 @@ lapply(fechas_def, summary)
 
 
 ############
-# The end:
-# Save one object, to eg .RData file:
-# Check and remove objects that are not necessary to save:
-ls()
-object_sizes <- sapply(ls(), function(x) object.size(get(x)))
-as.matrix(rev(sort(object_sizes))[1:10])
-# rm_list <- 'xx'
-# Remove all:
-# rm(list = ls())
-
-objects_to_save <- (c('data_f'))
-file_n <- '../data/processed/0_COISS_comp_bases.rdata.gzip'
-save(list = objects_to_save,
-     file = file_n,
-     compress = 'gzip'
-     )
-
-# Filename to save current R session (entire workspace) data and objects at the end:
-# output_name <- 'xx'
-# suffix <- 'xx'
-# save_session <- sprintf('%s_%s.RData', output_name, suffix)
-# print(sprintf('Saving an R session image as: %s', save_session))
-# save.image(file = save_session, compress = 'gzip')
-
-sessionInfo()
-# q()
-
-# Next: run the script for xxx
+# # The end:
+# # Save objects, to eg .RData file:
+# folder <- '../data/processed'
+# script <- '0_COISS_comp_bases'
+## infile_prefix
+# suffix <- 'rdata.gzip'
+# outfile <- sprintf(fmt = '%s/%s_%s.%s', folder, script, infile_prefix, suffix)
+# outfile
+# 
+# # Check and remove objects that are not necessary to save:
+# object_sizes <- sapply(ls(), function(x) object.size(get(x)))
+# object_sizes <- as.matrix(rev(sort(object_sizes))[1:10])
+# object_sizes
+# objects_to_save <- (c('data_f', 'infile_prefix', 'outfile'))
+# 
+# # Save:
+# save(list = objects_to_save,
+#      file = outfile,
+#      compress = 'gzip'
+#      )
+# 
+# # Remove/clean up session:
+# all_objects <- ls()
+# all_objects
+# rm_list <- which(!all_objects %in% objects_to_save)
+# all_objects[rm_list]
+# rm(list = all_objects[rm_list])
+# ls() # Anything defined after all_objects and objects_to_save will still be here
+# 
+# sessionInfo()
+# # q()
+# 
+# # Next: run the script for xxx
 ############
+

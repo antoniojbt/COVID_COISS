@@ -13,22 +13,6 @@ setwd(project_loc)
 
 
 ############
-# TO DO:
-# Subset data to time cuts; check dates ie T1 vs T0, etc as each 'T' already encompasses start and end dates
-# Reproduce results from paper
-# Run chi2
-# Get standard tables and risk
-# Pretty KM plot
-# Survival model
-# Diff in diff
-# MLM
-# Discuss date cut-off (T2 is truncated)
-# Arrange call to understand COVID data collection and database methods
-# Check other TO DOs
-############
-
-
-############
 # Import libraries
 library(data.table)
 library(episcout)
@@ -44,6 +28,7 @@ library(pROC)
 ############
 
 
+# TO DO: continue here
 ############
 # Load a previous R session, data and objects:
 file_n <- '../data/processed/3_COISS_intervention_setup_COVID19MEXICO2021_COVID-only_COISS_only.rdata.gzip'
@@ -186,7 +171,6 @@ for (level in levels(data_f$time_cuts)) {
 ###
 # Try with ggplot2:
 # Function to convert survfit object to data frame:
-# TO DO: move to episcout
 # TO DO: double check this function and summary(surv_fit_point) give the same output
 surv_summary <- function(survfit_obj, time_var) {
     data.frame(
@@ -201,7 +185,6 @@ surv_summary <- function(survfit_obj, time_var) {
 
 
 # Convert survfit object to data frame:
-# TO DO: move to episcout
 # Re-run the surv object and fit:
 surv_fit_point <- survival::survfit(Surv(days_to_death, death) ~ intervention + time_cuts,
                                     data = data_f
