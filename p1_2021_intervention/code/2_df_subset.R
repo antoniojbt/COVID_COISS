@@ -24,7 +24,7 @@ library(tidyverse)
 
 ############
 # Load a previous R session, data and objects:
-infile <- '../data/processed/1_COISS_setup.rdata.gzip'
+infile <- '../data/processed/1_setup_COVID19MEXICO2021.rdata.gzip'
 load(infile, verbose = TRUE)
 
 data_f <- data_f # just to get rid of RStudio warnings
@@ -32,7 +32,8 @@ dim(data_f)
 str(data_f)
 epi_head_and_tail(data_f)
 colnames(data_f)
-
+summary(data_f$death)
+summary(data_f$days_to_death)
 
 # For saving/naming outputs, should already come with the RData file though:
 infile_prefix <- infile_prefix
@@ -196,6 +197,10 @@ dim(data_f)
 dim(data_f_COISS)
 summary(data_f$intervention)
 summary(data_f$intervention)[1] + summary(data_f$intervention)[2]
+summary(data_f_COISS$intervention)
+
+# Drop level as now 0:
+data_f_COISS$intervention <- epi_clean_drop_zero_levels_vector(factor_var = data_f_COISS$intervention)
 summary(data_f_COISS$intervention)
 
 # Remove objects, keep objects names so that code can be re-run as several DBs:

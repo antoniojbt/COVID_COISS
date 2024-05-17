@@ -26,10 +26,12 @@
 # TO DOs:
 # Q's:
   # There are gaps between dates for start and end for T0, 1 and 2
+  # Check max symptoms here is after FECHA_ACTUALIZACION
+  # check desc stats and run for all numeric as now not only age
+  # re-check NAs for death at script 4
 
 # Bivariate
   # For COVID-only_COISS-only:
-    # COISS vs non-COISS
     # By outcome: survivors vs non-survivors
 
 # Run as sensitivity analyses:
@@ -49,7 +51,10 @@
   # Arrange call to understand COVID data collection and database methods
 
 # Write-up
+###
 
+
+###
 # Extra:
   # Impute if at random and actual missing data analysis
   # COISS vs non-COISS vs others
@@ -63,8 +68,14 @@
   # Additional bivariate:
     # COVID vs non-COVID
     # Gender, age, etc
+###
 
 
+###
+# Notes:
+# Median Survival Time: The median survival time is the time at which 50% of the study population is expected to have experienced the event. If the median survival time is not reached, it means that less than 50% of the participants have experienced the event by the end of the study period.
+# Censoring: High censoring can occur if a significant proportion of participants are still alive or event-free at the study's conclusion. This can lead to the median survival time being undefined.
+# Longer Follow-up Needed: The study might need a longer follow-up period to observe more events and possibly reach the median survival time.
 
 ###
 ############
@@ -380,52 +391,8 @@ str(data_f)
 
 
 ############
-# Add outcome death variable
-
-# Add outcome variable:
-data_f$death <- ifelse(!is.na(data_f$FECHA_DEF), 1, 0)
-# data_f$death <- factor(data_f$death, labels = c('yes', 'no'))
-# data_f$death <- as.factor(data_f$death)
-summary(data_f$death)
-summary(as.factor(data_f$death))
-
-# Add time to death, will use date of hospitalisation as start date, because
-# is more relevant for treatment analysis (COISS vs non)
-# is available, looks OK
-# reflects recognition of severe disease needing medical intervention
-# probably less biased than date of sympton onset
-data_f$days_to_death <- as.numeric(difftime(data_f$FECHA_DEF,
-                                            data_f$FECHA_INGRESO,
-                                            units = "days")
-                                   )
-summary(data_f$days_to_death)
-
-# Have negative values (!), convert to NA's, done below
-
-# Replace NA time with the maximum follow-up time, for censored data:
-# Arbitrary but will use FECHA_ACTUALIZACION as running 2021 to 2022 database
-# FECHA_ACTUALIZACION is about 10 days after last death date
-# Try last death plus 30 days
-# If analysing all (2020 to 2024) could be today's date as collection is ongoing
-
-summary(data_f$FECHA_ACTUALIZACION)
-summary(data_f$FECHA_DEF)
-last_day <- max(data_f$FECHA_ACTUALIZACION)
-last_day
-
-max_followup <- as.numeric(difftime(last_day,
-                                    min(data_f$FECHA_INGRESO),
-                                    units = "days")
-                           )
-max_followup
-summary(data_f$days_to_death)
-data_f$days_to_death[is.na(data_f$days_to_death)] <- max_followup
-summary(data_f$days_to_death)
-############
-
-
-############
-# Remove non-sensical dates
+###
+# Remove non-sensical dates and add new variables
 # Death before admission:
 str(data_f)
 
@@ -439,10 +406,6 @@ counts
 # Test and change to NAs in outcome/event variable (death):
 df_dates <- data_f
 summary(df_dates$FECHA_DEF)
-summary(df_dates$death)
-summary(as.factor(df_dates$death))
-str(df_dates)
-
 
 length(which(df_dates$FECHA_DEF < df_dates$FECHA_INGRESO))
 length(which(!is.na(as.Date(df_dates$FECHA_DEF)) &
@@ -450,7 +413,7 @@ length(which(!is.na(as.Date(df_dates$FECHA_DEF)) &
   )
 # These last two should match
 
-# Switch dates to Dates as ifelse() is not working:
+# Switch dates to Dates as ifelse() coercion won't work below:
 df_dates$FECHA_ACTUALIZACION <- as.Date(df_dates$FECHA_ACTUALIZACION)
 df_dates$FECHA_INGRESO <- as.Date(df_dates$FECHA_INGRESO)
 df_dates$FECHA_SINTOMAS <- as.Date(df_dates$FECHA_SINTOMAS)
@@ -458,6 +421,17 @@ df_dates$FECHA_DEF <- as.Date(df_dates$FECHA_DEF)
 str(df_dates)
 
 
+# Dates with NAs (9999-99-99) stay as NAs but introduce NAs in outcome variable:
+# Add outcome death variable
+df_dates$death <- ifelse(!is.na(df_dates$FECHA_DEF), 1, 0)
+df_dates$death <- as.integer(df_dates$death)
+str(df_dates$death)
+str(df_dates)
+
+summary(df_dates$death)
+summary(as.factor(df_dates$death))
+
+# Introduce NAs for non-sensical dates:
 df_dates$death <- if_else(!is.na(as.Date(df_dates$FECHA_DEF)) &
                             as.Date(df_dates$FECHA_DEF) < as.Date(df_dates$FECHA_INGRESO),
                           NA_integer_,
@@ -476,15 +450,68 @@ df_dates$death <- if_else(!is.na(as.Date(df_dates$FECHA_DEF)) &
                           )
 
 summary(as.factor(df_dates$death))
-df_dates$death
-
 head(data_f$FECHA_DEF)
 head(df_dates$FECHA_DEF)
+###
 
+
+###
+# Add time to death, will use date of hospitalisation as start date, because
+# is more relevant for treatment analysis (COISS vs non)
+# is available, looks OK
+# reflects recognition of severe disease needing medical intervention
+# probably less biased than date of symptom onset
+# Note: check max symptoms is after FECHA_ACTUALIZACION
+summary(data_f$FECHA_SINTOMAS)
+summary(data_f$FECHA_ACTUALIZACION)
+
+
+
+df_dates$days_to_death <- as.numeric(difftime(time1 = df_dates$FECHA_DEF,
+                                              time2 = df_dates$FECHA_INGRESO,
+                                              units = "days")
+                                   )
+summary(df_dates$days_to_death)
+length(which(df_dates$days_to_death < 0))
+# Has negative values (!), convert to NA's
+df_dates$days_to_death <- ifelse(df_dates$days_to_death < 0, NA, df_dates$days_to_death)
+summary(df_dates$days_to_death)
+summary(df_dates$FECHA_DEF)
+length(which(df_dates$days_to_death < 0))
+
+
+# Replace NA time with the maximum follow-up time, for censored data:
+# Arbitrary but will use FECHA_ACTUALIZACION as running 2021 to 2022 database
+# FECHA_ACTUALIZACION is about 10 days after last death date
+# Try last death plus 30 days
+# If analysing all (2020 to 2024) could be today's date as collection is ongoing
+
+summary(df_dates$FECHA_ACTUALIZACION)
+summary(df_dates$FECHA_DEF)
+last_day <- max(df_dates$FECHA_ACTUALIZACION)
+last_day
+
+max_followup <- as.numeric(difftime(last_day,
+                                    min(df_dates$FECHA_INGRESO),
+                                    units = "days")
+                           )
+max_followup
+summary(df_dates$days_to_death)
+df_dates$days_to_death[is.na(df_dates$days_to_death)] <- max_followup
+summary(df_dates$days_to_death)
+
+# Check:
+summary(df_dates$days_to_death)
+summary(df_dates$FECHA_DEF)
+summary(as.factor(df_dates$death))
+
+# Clean up a bit:
+str(df_dates)
 
 data_f <- df_dates
 rm(list = c('df_dates'))
 str(data_f)
+###
 ############
 
 

@@ -14,8 +14,6 @@ setwd(project_loc)
 ############
 # Import libraries
 library(data.table)
-# source functions from a different R script:
-#source(file.path(Rscripts_dir, 'moveme.R')) #, chdir = TRUE)
 library(episcout)
 library(ggthemes)
 library(cowplot)
@@ -107,12 +105,24 @@ epi_write(na_perc,
 
 ############
 # Summary statistics
+
+###
+# Numeric columns:
 epi_clean_count_classes(data_f)
 dplyr::glimpse(data_f)
 str(data_f)
 
-# Numeric
-stats_num <- epi_stats_summary(df = data_f$EDAD, class_type = 'int_num')
+# Get numeric columns for stats:
+# col_nums <- list()
+# i <- 'EDAD'
+# for (i in colnames(data_f)) {
+#   if (epi_clean_cond_numeric(data_f[[i]])) {
+#     col_nums <- c(col_nums, i)
+#   }
+# }
+# col_nums
+
+stats_num <- epi_stats_summary(df = data_f, class_type = 'int_num')
 stats_num
 
 # Numeric data summary doesn't need tidying but could be formatted:
@@ -131,10 +141,25 @@ outfile
 epi_write(file_object = stats_num, file_name = outfile)
 
 # Factor
-col_facts <- data_f[, c(7:40)]
+str(data_f)
+###
+
+
+###
+# Factor columns:
+# Remove ID row as will be picked up:
+col_facts <- data_f[, c(-1)]
+
+# Include outcome data as factor:
+col_facts$death <- as.factor(col_facts$death)
+
+# Get desc stats:
 stats_fct <- epi_stats_summary(df = col_facts, class_type = 'chr_fct')
 stats_fct
+unique(stats_fct$id)
 # View(stats_fct)
+dim(data_f)
+colnames(data_f)
 
 # Add total for percentage calculation and order column to tidy up results:
 perc_n <- nrow(col_facts)
@@ -159,27 +184,88 @@ epi_write(file_object = stats_fct_tidy,
           file_name = outfile
           )
 str(data_f)
+###
 ############
 
 
 ############
-# Plots EDAD
-plot1 <- epi_plot_box(df = data_f, var_y = 'EDAD')
-plot2 <- epi_plot_hist(df = data_f, var_x = 'EDAD')
-my_plot_list <- list(plot1, plot2)
-my_plot_grid <- epi_plots_to_grid(my_plot_list)
+# Plots
 
-infile_prefix
-file_n <- 'edad'
-suffix <- 'pdf'
-outfile <- sprintf(fmt = '%s/%s.%s', infile_prefix, file_n, suffix)
-outfile
+num_vars <- list()
+for (i in colnames(data_f)) {
+  if (epi_clean_cond_numeric(data_f[[i]])) {
+    num_vars <- c(num_vars, i)
+  }
+}
+num_vars
 
-epi_plot_cow_save(file_name = outfile,
-                  plot_grid = my_plot_grid,
-                  base_height = 4,
-                  base_width = 8)
 
+###
+# Numeric, boxplots:
+epi_plot_box(df = data_f, var_y = 'EDAD')
+
+# i <- "EDAD"
+num_list <- epi_plot_list(vars_to_plot = num_vars)
+for (i in names(num_list)) {
+  num_list[[i]] <- epi_plot_box(df = data_f, var_y = i)
+  }
+
+# Save plots
+# Plot 4 per page or so:
+per_file <- 4
+jumps <- seq(1, length(num_list), per_file)
+length(jumps)
+
+# i <- 2
+for (i in jumps) {
+  # infile_prefix
+  file_n <- 'plots_box'
+  suffix <- 'pdf'
+  outfile <- sprintf(fmt = '%s/%s_%s.%s', infile_prefix, file_n, i, suffix)
+  # outfile
+  start_i <- i
+  end_i <- i + 3
+  my_plot_grid <- epi_plots_to_grid(num_list[start_i:end_i])
+  epi_plot_cow_save(file_name = outfile, plot_grid = my_plot_grid)
+}
+###
+
+
+###
+# Histograms:
+epi_plot_hist(df = data_f, var_x = 'EDAD')
+
+num_list <- NULL
+i <- NULL
+num_list <- epi_plot_list(vars_to_plot = num_vars)
+for (i in names(num_list)) {
+  print(i)
+  num_list[[i]] <- epi_plot_hist(df = data_f, var_x = i)
+  }
+# num_list
+
+# Save plots
+# Plot 4 per page or so:
+per_file <- 4
+jumps <- seq(1, length(num_list), per_file)
+length(jumps)
+
+# i <- 2
+for (i in jumps) {
+  # infile_prefix
+  file_n <- 'plots_hist'
+  suffix <- 'pdf'
+  outfile <- sprintf(fmt = '%s/%s_%s.%s', infile_prefix, file_n, i, suffix)
+  # outfile
+  start_i <- i
+  end_i <- i + 3
+  my_plot_grid <- epi_plots_to_grid(num_list[start_i:end_i])
+  epi_plot_cow_save(file_name = outfile, plot_grid = my_plot_grid)
+}
+###
+
+
+###
 # Plots for factors
 str(data_f)
 # summary(data_raw$ORIGEN)
@@ -194,9 +280,12 @@ plot_bar
 # plot_bar_raw <- epi_plot_bar(df = data_raw, 'SECTOR')
 # plot_bar_raw
 
-# Plot all factors from the NA recoded df
+# Plot all factors 
+# Include outcome as factor
+colnames(col_facts)
+
 # Bar plots:
-fact_vars <- colnames(data_f)[7:40]
+fact_vars <- colnames(col_facts)
 i <- "ENTIDAD_RES"
 epi_plot_bar(df = data_f, var_x = i, ) +
     theme(axis.text.x = element_text(angle = 90, hjust = 1))
@@ -225,37 +314,13 @@ for (i in jumps) {
     start_i <- i
     end_i <- i + 3
     my_plot_grid <- epi_plots_to_grid(bar_list[start_i:end_i])
-    epi_plot_cow_save(file_name = outfile, plot_grid = my_plot_grid)
-}
-
-# Some plots didn't come out properly:
-re_plots <- c("ENTIDAD_RES",
-              "ENTIDAD_NAC",
-              "TIPO_PACIENTE",
-              "MUNICIPIO_RES"
-              )
-for (i in re_plots) {
-    plot1 <- epi_plot_bar(df = data_f, var_x = i, ) +
-        theme(axis.text.x = element_text(angle = 90, hjust = 1))
-    # infile_prefix
-    file_n <- 'plots_bar'
-    suffix <- 'pdf'
-    outfile <- sprintf(fmt = '%s/%s_%s.%s', infile_prefix, file_n, i, suffix)
-    # outfile
-    ggsave(filename = outfile,
-           plot = plot1,
-           width = 10,
-           height = 10
+    epi_plot_cow_save(file_name = outfile,
+                      plot_grid = my_plot_grid,
+                      base_width = 15,
+                      base_height = 15
     )
     }
-
-# bar_list <- epi_plot_list(vars_to_plot = list(plot1))
-# my_plot_grid <- epi_plots_to_grid(bar_list)
-# epi_plot_cow_save(file_name = file_name,
-#                   plot_grid = my_plot_grid,
-#                   base_height = 10,
-#                   base_width = 10
-#                   )
+###
 ############
 
 
