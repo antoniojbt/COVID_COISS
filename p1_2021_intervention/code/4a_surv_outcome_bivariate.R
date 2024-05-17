@@ -27,7 +27,7 @@ library(summarytools)
 
 ############
 # Load a previous R session, data and objects:
-infile <- '../data/processed/'
+infile <- '../data/processed/4_surv_outcome_COVID19MEXICO2021_COVID-only_COISS-only.rdata.gzip'
 load(infile, verbose = TRUE)
 data_f <- data_f # just to get rid of RStudio warnings
 dim(data_f)
@@ -47,83 +47,149 @@ outfile
 ############
 
 
-# TO DO: continue here
 ############
 # Survival analysis setup for group comparisons
 # Bivariate analysis
 
-
 ###
-# by group (intervention)
+outcome <- factor(data_f$death, levels = c(0, 1), labels = c("censored", "non-survival"))
 
-# Descriptive statistics by group
-data_f %>%
-    group_by(intervention) %>%
-    summarise(
-        mean_days_to_death = mean(days_to_death),
-        median_days_to_death = median(days_to_death),
-        events = sum(as.factor(death) == 1),
-        censored = sum(as.factor(death) == 0),
-        prop_events = mean(death == 1),
-        prop_censored = mean(death == 0)
-    )
+counts <- table(data_f$intervention, outcome)
+i <- ''
+file_n <- 'survival_counts'
+suffix <- 'txt'
+outfile <- sprintf(fmt = '%s/%s_%s.%s', infile_prefix, file_n, i, suffix)
+outfile
+epi_write(file_object = counts,
+          file_name = outfile
+          )
 
-table(data_f$intervention, data_f$death)
+
+props <- round(prop.table(table(data_f$intervention, outcome)), digits = 2)
+i <- ''
+file_n <- 'survival_proportions'
+suffix <- 'txt'
+outfile <- sprintf(fmt = '%s/%s_%s.%s', infile_prefix, file_n, i, suffix)
+outfile
+epi_write(file_object = props,
+          file_name = outfile
+          )
+
 ###
 ############
 
 
+
 ############
+# Plot survival by group
+
+###
 # Histogram of survival times
 ggplot(data_f, aes(x = days_to_death)) +
     geom_histogram(binwidth = 5, fill = "blue", alpha = 0.7) +
     labs(title = "Histogram of Survival Times", x = "Time", y = "Frequency")
+###
 
+
+###
 # Kaplan-Meier plot
 km_fit <- survfit(Surv(days_to_death, death) ~ intervention, data = data_f)
-ggsurvplot(km_fit, data = data_f, pval = TRUE, conf.int = TRUE, 
+
+km_grp <- ggsurvplot(km_fit, data = data_f, pval = TRUE, conf.int = TRUE, 
            ggtheme = theme_minimal(), 
            title = "Kaplan-Meier Survival Curves")
 
-# Boxplot of survival times by group
-ggplot(data_f, aes(x = intervention, y = days_to_death, fill = intervention)) +
-    geom_boxplot() +
-    labs(title = "Boxplot of Survival Times by Group", x = "Group", y = "Time")
+km_grp$plot
+km_grp$data.survtable
+km_grp$data.survplot
 
+i <- 'days_to_death'
+file_n <- 'plots_KM_group'
+suffix <- 'pdf'
+outfile <- sprintf(fmt = '%s/%s_%s.%s', infile_prefix, file_n, i, suffix)
+outfile
+ggplot2::ggsave(filename = outfile, plot = km_grp$plot)
+
+# Save the tables from survminer as well:
+file_n <- 'survival_table'
+suffix <- 'txt'
+outfile <- sprintf(fmt = '%s/%s_%s.%s', infile_prefix, file_n, i, suffix)
+outfile
+epi_write(file_object = km_grp$data.survtable,
+          file_name = outfile
+          )
+
+file_n <- 'data_survival_plot'
+suffix <- 'txt'
+outfile <- sprintf(fmt = '%s/%s_%s.%s', infile_prefix, file_n, i, suffix)
+outfile
+epi_write(file_object = km_grp$data.survplot,
+          file_name = outfile
+          )
+###
+
+
+###
+# Boxplot of survival times by group
+box_surv <- epi_plot_box(data_f,
+                         var_y = 'days_to_death',
+                         var_x = 'intervention',
+                         fill = 'intervention'
+                         ) +
+    labs(title = "Boxplot of Survival Times by Group",
+         x = "Group",
+         y = "Time") + # remove legend
+    theme(legend.position = "none")
+# TO DO: remove diamond legends in plot
+# box_surv
+
+i <- 'days_to_death'
+file_n <- 'plots_surv_box'
+suffix <- 'pdf'
+outfile <- sprintf(fmt = '%s/%s_%s.%s', infile_prefix, file_n, i, suffix)
+outfile
+ggplot2::ggsave(filename = outfile, plot = box_surv)
+###
+
+
+###
 # Cumulative hazard plot
-ggsurvplot(km_fit, data = data_f, fun = "cumhaz", 
+cum_haz <- ggsurvplot(km_fit, data = data_f, fun = "cumhaz", 
            ggtheme = theme_minimal(), 
            title = "Cumulative Hazard Plot")
 
-# Stratified summaries
-data_f %>%
-    group_by(intervention) %>%
-    summarise(
-        mean_time = mean(days_to_death),
-        median_time = median(days_to_death),
-        events = sum(death == 1),
-        censored = sum(death == 0),
-        prop_events = mean(death == 1),
-        prop_censored = mean(death == 0)
-    )
+cum_haz$plot
+cum_haz$data.survtable
+cum_haz$data.survplot
+
+i <- 'days_to_death'
+file_n <- 'plots_cum_haz_group'
+suffix <- 'pdf'
+outfile <- sprintf(fmt = '%s/%s_%s.%s', infile_prefix, file_n, i, suffix)
+outfile
+ggplot2::ggsave(filename = outfile, plot = cum_haz$plot)
+
+# Save the tables from survminer as well:
+file_n <- 'survival_table_cum_haz'
+suffix <- 'txt'
+outfile <- sprintf(fmt = '%s/%s_%s.%s', infile_prefix, file_n, i, suffix)
+outfile
+epi_write(file_object = cum_haz$data.survtable,
+          file_name = outfile
+          )
+
+file_n <- 'data_survival_plot_cum_haz'
+suffix <- 'txt'
+outfile <- sprintf(fmt = '%s/%s_%s.%s', infile_prefix, file_n, i, suffix)
+outfile
+epi_write(file_object = cum_haz$data.survplot,
+          file_name = outfile
+          )
+###
 ############
 
 
 ############
-###
-# Plot COISS vs non-COISS this is over the whole study period
-# COISS states were worse off
-summary(data_f$intervention)
-# group <- data_f$intervention
-surv_fit_group <- survival::survfit(surv_object ~ intervention,
-                                    data = data_f
-)
-ggsurvplot(surv_fit_group,
-           data = data_f
-)
-###
-
-
 ###
 # Use only intervention periods:
 summary(data_f$time_cuts)
@@ -138,54 +204,160 @@ levels(data_f$time_cuts)
 summary(data_f$time_cuts)
 
 # Also:
-data_f$intervention <- droplevels(data_f$intervention)
-levels(data_f$intervention)
 summary(data_f$intervention)
+# Should be fine
+# data_f$intervention <- droplevels(data_f$intervention)
+# levels(data_f$intervention)
+# summary(data_f$intervention)
+###
 
-table(data_f$intervention, data_f$time_cuts)
 
+###
+# Desc stats by time cut-offs:
+counts_by_dates <- table(data_f$intervention, data_f$time_cuts)
+counts_by_dates
+i <- ''
+file_n <- 'counts_by_dates'
+suffix <- 'txt'
+outfile <- sprintf(fmt = '%s/%s_%s.%s', infile_prefix, file_n, i, suffix)
+outfile
+epi_write(file_object = counts_by_dates,
+          file_name = outfile
+          )
+
+props_by_dates <- round(prop.table(counts_by_dates), digits = 2)
+props_by_dates
+i <- ''
+file_n <- 'proportions_by_dates'
+suffix <- 'txt'
+outfile <- sprintf(fmt = '%s/%s_%s.%s', infile_prefix, file_n, i, suffix)
+outfile
+epi_write(file_object = props_by_dates,
+          file_name = outfile
+          )
+###
+
+
+###
+# Desc stats by time cut-offs, outcome and intervention:
+counts_by_dates_outcome <- table(data_f$intervention, data_f$time_cuts, outcome)
+str(counts_by_dates_outcome)
+
+i <- ''
+file_n <- 'counts_by_dates_outcome'
+suffix <- 'txt'
+outfile <- sprintf(fmt = '%s/%s_%s.%s', infile_prefix, file_n, i, suffix)
+outfile
+epi_write(file_object = as.data.frame(counts_by_dates_outcome),
+          file_name = outfile
+          )
+
+props_by_dates_outcome <- round(prop.table(counts_by_dates_outcome), digits = 2)
+str(props_by_dates_outcome)
+
+i <- ''
+file_n <- 'props_by_dates_outcome'
+suffix <- 'txt'
+outfile <- sprintf(fmt = '%s/%s_%s.%s', infile_prefix, file_n, i, suffix)
+outfile
+epi_write(file_object = as.data.frame(props_by_dates_outcome),
+          file_name = outfile
+          )
+###
+
+
+###
 # There shouldn't be NAs, result should be FALSE:
 any(is.na(data_f$time_cuts)) # is at least one value TRUE?
 any(is.na(data_f$intervention))
 
 
-# Re-run the surv object:
+# Survival object by groups (intervention) and dates (time_cuts):
 surv_fit_point <- survival::survfit(Surv(days_to_death, death) ~ intervention + time_cuts,
                                     data = data_f
-)
+                                    )
 str(surv_fit_point)
 surv_fit_point$strata
 summary(surv_fit_point)
 
-ggsurvplot(surv_fit_point,
-           data = data_f,
-           xlab = "Time (days)",
-           ylab = "Survival Probability",
-           title = "Kaplan-Meier Survival Curves by Hospital and Study Point",
-           # facet.by = 'intervention', #"time_cuts",
-           risk.table = TRUE,  # Add risk table
-           pval = TRUE
-)  # Add p-value
+km_grps_dates <- ggsurvplot(surv_fit_point,
+                            data = data_f,
+                            xlab = "Time (days)",
+                            ylab = "Survival Probability",
+                            title = "Kaplan-Meier Survival Curves by Intervention and Study Points",
+                            # facet.by = 'intervention', #"time_cuts",
+                            risk.table = TRUE,  # Add risk table
+                            pval = TRUE  # Add p-value
+                            )
 # Still errors with faceting
+
+i <- 'days_to_death'
+file_n <- 'plots_km_group_dates'
+suffix <- 'pdf'
+outfile <- sprintf(fmt = '%s/%s_%s.%s', infile_prefix, file_n, i, suffix)
+outfile
+ggplot2::ggsave(filename = outfile,
+                plot = km_grps_dates$plot,
+                units = 'in',
+                height = 15,
+                width = 15
+                )
+
+# Save the tables from survminer as well:
+file_n <- 'survival_table_km_group_dates'
+suffix <- 'txt'
+outfile <- sprintf(fmt = '%s/%s_%s.%s', infile_prefix, file_n, i, suffix)
+outfile
+epi_write(file_object = km_grps_dates$data.survtable,
+          file_name = outfile
+          )
+
+file_n <- 'data_survival_plot_km_group_dates'
+suffix <- 'txt'
+outfile <- sprintf(fmt = '%s/%s_%s.%s', infile_prefix, file_n, i, suffix)
+outfile
+epi_write(file_object = km_grps_dates$data.survplot,
+          file_name = outfile
+          )
 ###
 
 ###
-# TO DO: save each plot:
 # Plot instead separately for each time cut-off:
-for (level in levels(data_f$time_cuts)) {
+date_cuts <- levels(data_f$time_cuts)
+km_dates_by_levels <- epi_plot_list(vars_to_plot = date_cuts)
+
+for (i in date_cuts) {
+    # print(i)
     surv_fit_level <- survfit(Surv(days_to_death, death) ~ intervention,
-                              data = subset(data_f, time_cuts == level)
-    )
-    print(ggsurvplot(
-        surv_fit_level,
-        data = subset(data_f, time_cuts == level),
-        xlab = "Time (days)",
-        ylab = "Survival Probability",
-        title = paste("Kaplan-Meier Survival Curves -", level),
-        risk.table = TRUE,
-        pval = TRUE
-    ))
-}
+                              data = subset(data_f, time_cuts == i)
+                              )
+    
+    plot_1 <- ggsurvplot(surv_fit_level,
+                         data = subset(data_f, time_cuts == i),
+                         xlab = "Time (days)",
+                         ylab = "Survival Probability",
+                         title = paste("KM Survival Curves -", i),
+                         risk.table = TRUE,
+                         pval = TRUE
+                         )
+    # print(plot_1$plot)
+    km_dates_by_levels[[i]] <- plot_1$plot
+    }
+
+# Save plots
+# Plot all together:
+    file_n <- 'plots_km_group_dates_facet'
+    suffix <- 'pdf'
+    outfile <- sprintf(fmt = '%s/%s.%s', infile_prefix, file_n, suffix)
+    outfile
+    my_plot_grid <- epi_plots_to_grid(km_dates_by_levels)
+    epi_plot_cow_save(file_name = outfile,
+                      plot_grid = my_plot_grid,
+                      base_width = 15,
+                      base_height = 15
+                      )
+
+# Could get risk table and data behind each plot but already elsewhere
 ###
 
 

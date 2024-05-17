@@ -30,7 +30,7 @@ library(pROC)
 
 ############
 # Load a previous R session, data and objects:
-infile <- '../data/processed/xx.rdata.gzip'
+infile <- '../data/processed/4_surv_outcome_COVID19MEXICO2021_COVID-only_COISS-only.rdata.gzip'
 load(infile, verbose = TRUE)
 data_f <- data_f # just to get rid of RStudio warnings
 dim(data_f)
@@ -52,6 +52,46 @@ outfile
 
 ############
 #
+# # Descriptive statistics # by group (intervention)
+# # Split the data:
+# split_data <- split(data_f, data_f$intervention)
+# typeof(split_data)
+# 
+# 
+# # TO DO: continue here
+# 
+# descriptive_stats <- lapply(split_data, summary)
+# str(descriptive_stats)
+# str(descriptive_stats$COISS)
+# descriptive_stats$COISS
+# descriptive_stats$`non-COISS`
+# 
+# 
+# # Desc stats for num vars:
+# 
+# 
+# 
+# 
+# 
+# 
+# # Desc stats for fact vars:
+# 
+# 
+# 
+# 
+# 
+# mean_days_to_death <- mean(data_f$days_to_death)
+# median_days_to_death <- median(data_f$days_to_death)
+# events <- sum(as.factor(data_f$death) == 1)
+# censored <- sum(as.factor(data_f$death) == 0)
+# prop_events <- mean(data_f$death == 1)
+# prop_censored <- mean(data_f$death == 0)
+# 
+# outcome <- factor(data_f$death, levels = c(0, 1), labels = c("censored", "non-survival"))
+# table(data_f$intervention, outcome)
+# round(prop.table(table(data_f$intervention, outcome)), digits = 2)
+# 
+
 
 ############
 
