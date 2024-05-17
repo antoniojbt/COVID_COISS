@@ -134,14 +134,14 @@ epi_write(file_object = km_grp$data.survplot,
 box_surv <- epi_plot_box(data_f,
                          var_y = 'days_to_death',
                          var_x = 'intervention',
-                         fill = 'intervention'
+                         fill = 'intervention',
                          ) +
     labs(title = "Boxplot of Survival Times by Group",
          x = "Group",
          y = "Time") + # remove legend
-    theme(legend.position = "none")
-# TO DO: remove diamond legends in plot
-# box_surv
+    theme(legend.position = "none")  +
+    guides(fill = "none") # remove within plot symbols
+box_surv
 
 i <- 'days_to_death'
 file_n <- 'plots_surv_box'
@@ -359,109 +359,6 @@ for (i in date_cuts) {
 
 # Could get risk table and data behind each plot but already elsewhere
 ###
-
-
-###
-# Try with ggplot2:
-# Function to convert survfit object to data frame:
-# TO DO: double check this function and summary(surv_fit_point) give the same output
-surv_summary <- function(survfit_obj, time_var) {
-    data.frame(
-        time = survfit_obj$time,
-        n.risk = survfit_obj$n.risk,
-        n.event = survfit_obj$n.event,
-        n.censor = survfit_obj$n.censor,
-        surv = survfit_obj$surv,
-        strata = rep(names(survfit_obj$strata), times = survfit_obj$strata)
-    )
-}
-
-
-# Convert survfit object to data frame:
-# Re-run the surv object and fit:
-surv_fit_point <- survival::survfit(Surv(days_to_death, death) ~ intervention + time_cuts,
-                                    data = data_f
-)
-str(surv_fit_point)
-surv_fit_point$n
-surv_fit_point$time
-
-
-surv_data <- surv_summary(surv_fit_point, "time")
-epi_head_and_tail(surv_data, cols = 6)
-summary(surv_data)
-
-# Extract hospital and time_cuts from strata:
-surv_data <- surv_data %>%
-    mutate(
-        intervention = sapply(strsplit(as.character(strata), ","), function(x) trimws(sub("intervention=", "", x[1]))),
-        time_cuts = sapply(strsplit(as.character(strata), ","), function(x) trimws(sub("time_cuts=", "", x[2])))
-    )
-epi_head_and_tail(surv_data, cols = 8)
-surv_data$time_cuts
-surv_data$intervention
-# Trimmed of whitespaces now
-
-# Set order for time-cuts:
-surv_data$time_cuts <- factor(surv_data$time_cuts,
-                              levels = c('pre-T0', 'T0', 'gap_T0_T1', 'T1',
-                                         'gap_T1_T2', 'T2', 'post-T2'),
-                              ordered = TRUE)
-summary(surv_data$time_cuts)
-
-# Plot with ggplot2 and faceting:
-# TO DO: save plot
-ggplot(surv_data, aes(x = time, y = surv, color = intervention)) +
-    geom_step() +
-    facet_wrap(~time_cuts, scales = "free_y") +
-    labs(
-        title = "Kaplan-Meier Survival Curves by Intervention and Study Point",
-        x = "Time (days)",
-        y = "Survival Probability"
-    ) +
-    theme_minimal() +
-    theme(legend.title = element_blank())
-
-surv_data
-###
-############
-
-
-############
-# TO DO: create and save table
-# Extract risk table data:
-surv_summary <- summary(surv_fit_point)
-head(surv_summary)
-str(surv_summary)
-
-# Extract risk table data
-risk_table <- data.frame(
-    strata = surv_summary$strata,
-    time = surv_summary$time,
-    n.risk = surv_summary$n.risk,
-    n.event = surv_summary$n.event
-)
-epi_head_and_tail(risk_table, cols = 4)
-epi_head_and_tail(surv_data, cols = 8)
-
-# Extract hospital and time_cuts from strata
-risk_table <- risk_table %>%
-    mutate(
-        hospital = sapply(strsplit(as.character(strata), ","), function(x) trimws(sub("intervention=", "", x[1]))),
-        time_cuts = sapply(strsplit(as.character(strata), ","), function(x) trimws(sub("time_cuts=", "", x[2])))
-    ) %>%
-    select(-strata)
-
-# Summarize risk table data by time_cuts
-risk_summary <- risk_table %>%
-    group_by(time_cuts) %>%
-    summarize(
-        total_risk = sum(n.risk, na.rm = TRUE),
-        total_events = sum(n.event, na.rm = TRUE)
-    )
-
-# Print the risk summary table
-knitr::kable(risk_summary, caption = "Risk Table by Time Cuts and Events (Death)")
 ############
 
 
@@ -485,7 +382,7 @@ objects_to_save <- (c('data_f', 'infile_prefix', 'outfile'))
 save(list = objects_to_save,
      file = outfile,
      compress = 'gzip'
-)
+     )
 
 # Remove/clean up session:
 all_objects <- ls()
