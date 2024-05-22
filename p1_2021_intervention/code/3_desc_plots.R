@@ -23,7 +23,8 @@ library(tidyverse)
 
 ############
 # Load a previous R session, data and objects:
-infile <- '../data/processed/2_df_subset_COVID19MEXICO2021_COVID-only_COISS-only.rdata.gzip'
+# infile <- '../data/processed/2_df_subset_COVID19MEXICO2021_COVID-only_COISS-only.rdata.gzip'
+infile <- '../data/processed/2_df_subset_COVID19MEXICO2021_2022_COVID-only_COISS-only.rdata.gzip'
 load(infile, verbose = TRUE)
 data_f <- data_f # just to get rid of RStudio warnings
 dim(data_f)
@@ -139,19 +140,17 @@ outfile <- sprintf(fmt = '%s/%s.%s', infile_prefix, file_n, suffix)
 outfile
 
 epi_write(file_object = stats_num, file_name = outfile)
-
-# Factor
-str(data_f)
 ###
 
 
 ###
 # Factor columns:
 # Remove ID row as will be picked up:
+str(data_f)
 col_facts <- data_f[, c(-1)]
 
 # Include outcome data as factor:
-col_facts$death <- as.factor(col_facts$death)
+col_facts$d_death <- as.factor(col_facts$d_death)
 
 # Get desc stats:
 stats_fct <- epi_stats_summary(df = col_facts, class_type = 'chr_fct')
@@ -344,7 +343,7 @@ sum_dates_df <- data.frame('variable' = character(0),
                            'Max' = numeric(0),
                            'IQR' = numeric(0),
                            stringsAsFactors = FALSE
-)
+                           )
 # sum_dates_df
 
 for (i in col_dates) {

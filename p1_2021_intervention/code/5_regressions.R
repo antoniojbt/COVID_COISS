@@ -6,6 +6,23 @@
 
 
 ############
+# TO DO:
+  # Run DiD as primary analysis; followed by eg Cox or MLM
+  # Check assumptions: independence, expected frequencies, sample size
+  # plot/check residuals, R2, etc
+  # Easy to digest presentation
+  # Competing Risks Analysis?
+
+# Done:
+  # needs proper selection of covariates
+  # check problems with missing data, exclude vars based on this
+  # Create a table of counts, proportions, etc. for simple overview
+  # Save tables, see tendency
+  # change follow-up to 30 days, replot 4a script with this
+############
+
+
+############
 project_loc <- '/Users/antoniob/Documents/work/science/projects/projects/ongoing/laura_bonifaz/COVID_COISS/p1_2021_intervention/results/'
 getwd()
 setwd(project_loc)
@@ -30,7 +47,8 @@ library(pROC)
 
 ############
 # Load a previous R session, data and objects:
-infile <- '../data/processed/4a_surv_outcome_bivariate_COVID19MEXICO2021_COVID-only_COISS-only.rdata.gzip'
+# infile <- '../data/processed/4a_surv_outcome_bivariate_COVID19MEXICO2021_COVID-only_COISS-only.rdata.gzip'
+infile <- '../data/processed/4a_surv_outcome_bivariate_COVID19MEXICO2021_2022_COVID-only_COISS-only.rdata.gzip'
 load(infile, verbose = TRUE)
 data_f <- data_f # just to get rid of RStudio warnings
 dim(data_f)
@@ -51,68 +69,318 @@ outfile
 
 
 ############
+# Univariate tests
+# Chi-squared test
+
+# By d_intervention:
+table(data_f$d_death, data_f$d_intervention)
+table(data_f$d_death_30, data_f$d_intervention)
+# These will be different as e.g. using follow-up to 30 days will change counts of events occurred by given date
+
+chi_t <- chisq.test(data_f$d_death, data_f$d_intervention)
+chi_t$observed
+str(chi_t)
+chi_t$observed
+
+
+# By d_intervention and date:
+summary(data_f$d_time_cuts)
+
+pre_T0 <- data_f[data_f$d_time_cuts == 'pre_T0', ]
+T0 <- data_f[data_f$d_time_cuts == 'T0', ]
+gap_T1_T0 <- data_f[data_f$d_time_cuts == 'gap_T1_T0', ]
+T1 <- data_f[data_f$d_time_cuts == 'T1', ]
+gap_T1_T2 <- data_f[data_f$d_time_cuts == 'gap_T1_T2', ]
+T2 <- data_f[data_f$d_time_cuts == 'T2', ]
+post_T2 <- data_f[data_f$d_time_cuts == 'post_T2', ]
+
+summary(data_f$d_intervention)
+summary(factor(data_f$d_death))
+
+
+# Vars to test:
+# outcome_var <- 'd_death'
+outcome_var <- 'd_death_30'
+
+# Initialize list and df for results by time cuts and chi-sq test:
+by_time_cuts <- list()
+chi_df <- data.frame()
+
+# Loop through each level of d_time_cuts
+for (i in levels(data_f$d_time_cuts)) {
+    # print(i)
+    # Subset time cut:
+    t <- data_f[data_f$d_time_cuts == i, ]
+    
+    # Tables:
+    contingency_table <- table(t[[outcome_var]], t$d_intervention)
+    prop_table <- round(prop.table(contingency_table), digits = 3)
+    
+    # Test:
+    chi_test <- chisq.test(t[[outcome_var]], t$d_intervention)
+    # print(chi_test)
+    
+    # Save results:
+    by_time_cuts[[i]] <- list(
+        contingency_table = contingency_table,
+        proportions = prop_table,
+        chi_test = chi_test
+        )
+    
+    # Append chi-squared:
+    chi_df <- rbind(chi_df, data.frame(
+        time_cut = i,
+        chi_squared = chi_test$statistic,
+        p_value = chi_test$p.value,
+        df = chi_test$parameter
+    ))
+    }
+
+# Save:
+file_n <- 'chi_squared'
+suffix <- 'txt'
+i <- outcome_var
+outfile <- sprintf(fmt = '%s/%s_%s.%s', infile_prefix, file_n, i, suffix)
+outfile
+epi_write(file_object = chi_df,
+          file_name = outfile
+          )
+
+# Save proportions and contingency tables:
+for (i in names(by_time_cuts)) {
+    file_n <- 'contingency_table'
+    suffix <- 'txt'
+    outfile <- sprintf(fmt = '%s/%s_%s_%s.%s', infile_prefix, file_n, i, outcome_var, suffix)
+    # outfile
+    epi_write(file_object = by_time_cuts[[i]]$contingency_table,
+              file_name = outfile
+              )
+    
+    file_n <- 'proportions'
+    suffix <- 'txt'
+    outfile <- sprintf(fmt = '%s/%s_%s_%s.%s', infile_prefix, file_n, i, outcome_var, suffix)
+    # outfile
+    epi_write(file_object = by_time_cuts[[i]]$proportions,
+              file_name = outfile
+    )
+    }
+
+print(chi_df)
+
+############
+
+
+############
 # Simple regression setup
 
-###
-# Fit the logistic regression model
-model_1 <- glm(death ~ intervention,
-               data = data_f,
+# Setup formula:
+outcome_var <- 'd_death_30'
+mod_spec <- sprintf("%s ~ d_intervention", outcome_var)
+mod_spec
+model_formula <- as.formula(mod_spec)
+
+# Fit the model
+model_1 <- glm(model_formula,
+               data = data_f, # or e.g. pre-T0
                family = binomial
-)
+               )
 
 # Summarize the model
-summary(model_1)
+res <- summary(model_1)
+res
 
-# Get predicted probabilities
-predicted_probs <- predict(model_1, type = "response")
-predicted_probs
+# # Get predicted probabilities
+# predicted_probs <- predict(model_1, type = "response")
+# predicted_probs
+# 
+# # Get predicted classes (0 or 1) using a threshold of 0.5
+# predicted_classes <- ifelse(predicted_probs > 0.5, 1, 0)
+# 
+# # View the first few predicted probabilities and classes
+# head(predicted_probs)
+# head(predicted_classes)
+# 
+# # Create a confusion matrix
+# caret::confusionMatrix(as.factor(predicted_classes), as.factor(data_f$d_death))
+# 
+# # Plot the ROC curve
+# roc_curve <- roc(data_f$d_death, predicted_probs)
+# plot(roc_curve)
+############
 
-# Get predicted classes (0 or 1) using a threshold of 0.5
-predicted_classes <- ifelse(predicted_probs > 0.5, 1, 0)
 
-# View the first few predicted probabilities and classes
-head(predicted_probs)
-head(predicted_classes)
+############
+# Setup covariates
+# Run simple (above) then adjusted for various models
 
-# Create a confusion matrix
-caret::confusionMatrix(as.factor(predicted_classes), as.factor(data_f$death))
-
-# Plot the ROC curve
-roc_curve <- roc(data_f$death, predicted_probs)
-plot(roc_curve)
-###
-
-
-###
 colnames(data_f)
-model_2 <- glm(death ~ intervention + EDAD + SEXO,
-               data = data_f,
-               family = binomial
-)
+summary(data_f$SECTOR)
+summary(data_f$ORIGEN)
+summary(data_f)
 
-# Summarize the model
-summary(model_2)
-summary(model_1)
+colnames(data_f)
+
+# Excluded, admin vars:
+# "ID_REGISTRO"
+# "FECHA_ACTUALIZACION"
+
+# Would correlate:
+# "FECHA_DEF"
+# "ENTIDAD_UM" # because it determines d_intervention
+# "MUNICIPIO_RES" # would correlate with ENTIDAD_UM but need to check
+# "ENTIDAD_NAC" # would correlate with ENTIDAD_UM but need to check
+# "ENTIDAD_RES" # would correlate with ENTIDAD_UM but need to check
+# "d_days_to_death"
+
+
+# Unsure:
+extra_check <- c("FECHA_INGRESO", # surv analysis will account for it
+                 "FECHA_SINTOMAS" # need to check db manual
+                 )
+
+# Covariates:
+covars <- c("d_intervention",
+            # "d_time_cuts", # exclude for now as running models for each cut
+            "EDAD",
+            "ORIGEN",
+            "SECTOR",
+            "SEXO",
+            # "TIPO_PACIENTE", # errors, don't know why
+            # "INTUBADO", # high NA's
+            "NEUMONIA",
+            "NACIONALIDAD",
+            # "EMBARAZO", # errors, don't know why; high NA's
+            # "HABLA_LENGUA_INDIG", # errors, don't know why
+            "INDIGENA",
+            "DIABETES",
+            "EPOC",
+            "ASMA",
+            "INMUSUPR",
+            "HIPERTENSION",
+            "OTRA_COM",
+            "CARDIOVASCULAR",
+            "OBESIDAD",
+            "RENAL_CRONICA",
+            "TABAQUISMO",
+            "OTRO_CASO"
+            # "TOMA_MUESTRA_LAB", # admin var, may correlate
+            # "RESULTADO_LAB", # admin var, may correlate
+            # "TOMA_MUESTRA_ANTIGENO", # admin var, may correlate
+            # "RESULTADO_ANTIGENO", # admin var, may correlate
+            # "CLASIFICACION_FINAL", # admin var, may correlate
+            # "MIGRANTE", # errors, don't know why; high NA's
+            # "PAIS_NACIONALIDAD", # errors, don't know why
+            # "PAIS_ORIGEN", # errors, don't know why; high NA's
+            # "UCI" # high NA's
+            )
+
+lapply(data_f[, covars], summary)
+
+# Setup formula:
+outcome_var <- 'd_death_30'
+# outcome_var <- 'd_death'
+
+time_var <- 'd_days_to_death_30'
+
+# For GLMs:
+mod_spec_lm <- sprintf("%s ~ %s", outcome_var, paste(covars, collapse = " + "))
+mod_spec_lm
+mod_form_lm <- as.formula(mod_spec_lm)
+mod_form_lm
+
+
+# For survival analysis:
+mod_spec_surv <- sprintf("Surv(%s, %s) ~ %s", time_var, outcome_var, paste(covars, collapse = " + "))
+mod_form_surv <- as.formula(mod_spec_surv)
+mod_form_surv
+############
+
+
+############
+# Multi-variable regressions:
+
+###
+# Survival
+str(data_f)
+fit <- surv_fit
+
+surv_fit <- survfit(mod_form_surv,
+               data = data_f
+               )
+
+surv_fit_plot <- ggsurvplot(fit, data = data_f, conf.int = TRUE,
+                            xlab = "Time (days)", ylab = "Survival Probability",
+                            title = "Kaplan-Meier Survival Curves by Time Period"
+                            )
+# TO DO: as for outcome_var; i.e. re-run 4a but showing adjusted values
+###
+
+
+###
+# Log-rank test to compare survival across periods:
+surv_diff <- survdiff(mod_form, data = data_f)
+surv_diff
+str(surv_diff)
+###
+
+
+###
+# Cox proportional hazards model:
+# TO DO
+res <- summary(cox_model)
+str(res)
+res
+###
+
+
+
+###
+# GLM, no interaction terms:
+for (i in levels(data_f$d_time_cuts)) {
+    print(i)
+    # by_time_cuts[[i]] <- data_f[data_f$d_time_cuts == i, ]
+    t <- data_f[data_f$d_time_cuts == i, ]
+    print(table(t$d_death, t$d_intervention))
+    print(round(prop.table(table(t$d_death, t$d_intervention)), digits = 3))
+    print(chisq.test(t$d_death, t$d_intervention))
+    model_2 <- glm(mod_form,
+                   data = t,
+                   family = binomial
+    )
+    print(summary(model_2))
+}
 ###
 ############
+
 
 
 ############
 # Basic DiD
 # Fit linear model
-model_DiD <- lm(death ~ intervention * days_to_death, data = data_f)
+
+DiD_formula <- as.formula("d_days_to_death ~ d_intervention +
+                                   EDAD +
+                                   SEXO +
+                                   NACIONALIDAD +
+                                   DIABETES +
+                                   HIPERTENSION + 
+                                   d_intervention * d_time_cuts" # Needs interaction term
+                            )
+
+model_DiD <- lm(DiD_formula, data = data_f)
 
 # Summarize model
-summary(model_D)
+res_model_DiD <- summary(model_DiD)
+res_model_DiD
 
 # Tidy the model output
-tidy(model_DiD)
+tidy(res_model_DiD)
 ############
 
 
 
 ############
-# TO DO
+# TO DO:
 # Run mixed model
 # mem <- lmer(lethality ~ ESTRATEGIA + edad + SEXO + COMORBILIDADES +
 #                 (1 | entidad_um),
@@ -124,12 +392,6 @@ tidy(model_DiD)
 # Predict:
 # new_data <- data.frame(fixedEffect = new_fixed_values, randomEffect = new_random_values)
 # predictions <- predict(mem, newdata = new_data, re.form = NA)  # re.form = NA to exclude random effects
-############
-
-
-############
-#
-
 ############
 
 

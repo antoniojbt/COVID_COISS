@@ -9,16 +9,31 @@
 ###
 # Done:
 # Check exclusion criteria:
-  # EDAD <1, >95
+  # EDAD <1, >95; can use 0 as these are individuals under 1 year old
   # EdoMex; CDMX
   # Clasif Final 1, 2, 3 only, exclude >=4
   # ? That's it
 # Use DGE 2021 data, which covers T0 to end of T2
+# Joined 2021 and 2022 as key date is FECHA_SINTOMAS, which I think is admission (talked to Ruth Gonzalez)
 # Run as independent analyst
+
+# Contacted DGE for methods document for database (collection, creation, maintenance, etc):
+  # This is the Manual de Vigilancia Epidemiologica Enfermedades Respiratorias
+  # Check anexes
+  # SISVER system, sentinel type
+  # Subsite lineamientos y manuales
+  # Manual de Laboratorio
+  # on DGE site
+  # Ruth Gonzalez; Laura Flores
 
 # Univariate
   # All, COVID-only
   # Re-run code above for plots and stats but COVID-only
+
+# Bivariate
+  # For COVID-only_COISS-only:
+  # By outcome: survivors vs non-survivors
+
 ###
 
 
@@ -27,28 +42,28 @@
 # Q's:
   # There are gaps between dates for start and end for T0, 1 and 2
   # Check max symptoms here is after FECHA_ACTUALIZACION
-  # check desc stats and run for all numeric as now not only age
   # re-check NAs for death at script 4
-
-# Bivariate
-  # For COVID-only_COISS-only:
-    # By outcome: survivors vs non-survivors
+  # Are re-admissions an issue? e.g. violate independence assumption
+  # Use 30-day mortality?
 
 # Run as sensitivity analyses:
+  # Reproduce results from paper  
   # Diff in Diff
   # Mixed effects model
 
 # Regressions:
-  # Subset data to time cuts; check dates ie T1 vs T0, etc as each 'T' already encompasses start and end dates
-  # Reproduce results from paper
-  # Run chi2
-  # Get standard tables and risk
-  # Pretty KM plot
-  # Survival model
-  # Diff in diff
-  # MLM
-  # Discuss date cut-off (T2 is truncated)
-  # Arrange call to understand COVID data collection and database methods
+  # Done:
+    # Subset data to time cuts; check dates ie T1 vs T0, etc as each 'T' already encompasses start and end dates
+    # Get standard tables and risk  
+    # Pretty KM plot  
+  
+  # Pending:
+    # Run chi2
+    # Survival model
+    # Diff in diff
+    # MLM
+    # Discuss date cut-off (T2 is truncated)
+    # Arrange call to understand COVID data collection and database methods
 
 # Write-up
 ###
@@ -62,9 +77,8 @@
   # Other comparisons?
   # Cross with other data?
   # Join COVID19 DGE databases by year:
-    # Clean up duplicates (max date of one year overlaps with min date of next)
-    # Clarify how ID variable was created; duplicates?
-    # Contact DGE, get methods document for database (collection, creation, maintenance, etc)
+    # Clean up duplicates (max date of one year overlaps with min date of next); there are no duplicates when checking by ID, and shouldn't be as data is medical unit admissions
+  
   # Additional bivariate:
     # COVID vs non-COVID
     # Gender, age, etc
@@ -111,11 +125,12 @@ library(tidyverse)
 
 # Read data based on 0_COISS_comp_base.R
 # Run 2021 database as it covers the period of interest:
-COVID19MEXICO2021 <- '../data/raw/datos_abiertos_covid19/COVID19MEXICO2021.zip'
-infile_prefix <- 'COVID19MEXICO2021'
+# COVID19MEXICO2021 <- '../data/raw/datos_abiertos_covid19/COVID19MEXICO2021.zip'
+# data_f <- '../data/processed/COVID19MEXICO2021_2022.rdata.gzip'
+infile_prefix <- 'COVID19MEXICO2021_2022'
 
 # Run code for any COVID database as possible:
-data_f <- episcout::epi_read(COVID19MEXICO2021)
+# data_f <- episcout::epi_read(data_f)
 epi_head_and_tail(data_f)
 str(data_f)
 summary(data_f$FECHA_INGRESO)
@@ -198,7 +213,7 @@ sapply(data_f, typeof)
 
 ###
 # Function to convert true integer columns to factors, excluding IDate:
-convert_int_to_factor <- function(dt) { # dt as it's a data.table object
+epi_clean_int_to_factor <- function(dt) { # dt as it's a data.table object
     for (col in names(dt)) {
         # Check if the column is integer and not an IDate:
         if (is.integer(dt[[col]]) && !inherits(dt[[col]], "IDate")) {
@@ -209,7 +224,7 @@ convert_int_to_factor <- function(dt) { # dt as it's a data.table object
 }
 
 # Convert int cols to factors:
-data_f <- convert_int_to_factor(data_f)
+data_f <- epi_clean_int_to_factor(data_f)
 
 # Check the changes
 str(data_f)
@@ -378,8 +393,8 @@ length(which(data_f$EDAD > 95))
 length(which(data_f$EDAD < 1))
 length(which(data_f$EDAD == 0))
 
-# Lots of zeros, maybe under one year olds, exclude as ambiguous:
-data_f$EDAD <- ifelse(data_f$EDAD < 1, NA, data_f$EDAD)
+# Lots of zeros, maybe under one year olds, keep as these are explicitly coded as <1 year olds:
+# data_f$EDAD <- ifelse(data_f$EDAD < 1, NA, data_f$EDAD)
 sum(is.na(data_f$EDAD))
 summary(data_f$EDAD)
 length(which(data_f$EDAD < 1))
@@ -423,61 +438,64 @@ str(df_dates)
 
 # Dates with NAs (9999-99-99) stay as NAs but introduce NAs in outcome variable:
 # Add outcome death variable
-df_dates$death <- ifelse(!is.na(df_dates$FECHA_DEF), 1, 0)
-df_dates$death <- as.integer(df_dates$death)
-str(df_dates$death)
+df_dates$d_death <- ifelse(!is.na(df_dates$FECHA_DEF), 1, 0)
+df_dates$d_death <- as.integer(df_dates$d_death)
+str(df_dates$d_death)
 str(df_dates)
 
-summary(df_dates$death)
-summary(as.factor(df_dates$death))
+summary(df_dates$d_death)
+summary(as.factor(df_dates$d_death))
 
 # Introduce NAs for non-sensical dates:
-df_dates$death <- if_else(!is.na(as.Date(df_dates$FECHA_DEF)) &
+df_dates$d_death <- if_else(!is.na(as.Date(df_dates$FECHA_DEF)) &
                             as.Date(df_dates$FECHA_DEF) < as.Date(df_dates$FECHA_INGRESO),
                           NA_integer_,
-                          as.integer(df_dates$death)
+                          as.integer(df_dates$d_death)
                           )
-length(which(is.na(df_dates$death)))
-summary(as.factor(df_dates$death))
-# Should have e.g. 74 NAs
+length(which(is.na(df_dates$d_death)))
+summary(as.factor(df_dates$d_death))
+# Should have e.g. 74 NAs; 84 for 2021 with 2022
+# Note no NAs for EDAD and very few for non-sensical dates
 # Massive pain as type coercion wasn't working
 
 # Death before symptoms:
-df_dates$death <- if_else(!is.na(as.Date(df_dates$FECHA_DEF)) &
+df_dates$d_death <- if_else(!is.na(as.Date(df_dates$FECHA_DEF)) &
                             as.Date(df_dates$FECHA_DEF) < as.Date(df_dates$FECHA_SINTOMAS),
                           NA_integer_,
-                          as.integer(df_dates$death)
+                          as.integer(df_dates$d_death)
                           )
 
-summary(as.factor(df_dates$death))
+summary(as.factor(df_dates$d_death))
 head(data_f$FECHA_DEF)
 head(df_dates$FECHA_DEF)
 ###
 
 
 ###
-# Add time to death, will use date of hospitalisation as start date, because
+# Add time to d_death, will use date of hospitalisation as start date, because
 # is more relevant for treatment analysis (COISS vs non)
 # is available, looks OK
 # reflects recognition of severe disease needing medical intervention
 # probably less biased than date of symptom onset
 # Note: check max symptoms is after FECHA_ACTUALIZACION
+# Use 'd_' as suffix for new/derived variables
+
 summary(data_f$FECHA_SINTOMAS)
 summary(data_f$FECHA_ACTUALIZACION)
 
 
 
-df_dates$days_to_death <- as.numeric(difftime(time1 = df_dates$FECHA_DEF,
+df_dates$d_days_to_death <- as.numeric(difftime(time1 = df_dates$FECHA_DEF,
                                               time2 = df_dates$FECHA_INGRESO,
                                               units = "days")
                                    )
-summary(df_dates$days_to_death)
-length(which(df_dates$days_to_death < 0))
+summary(df_dates$d_days_to_death)
+length(which(df_dates$d_days_to_death < 0))
 # Has negative values (!), convert to NA's
-df_dates$days_to_death <- ifelse(df_dates$days_to_death < 0, NA, df_dates$days_to_death)
-summary(df_dates$days_to_death)
+df_dates$d_days_to_death <- ifelse(df_dates$d_days_to_death < 0, NA, df_dates$d_days_to_death)
+summary(df_dates$d_days_to_death)
 summary(df_dates$FECHA_DEF)
-length(which(df_dates$days_to_death < 0))
+length(which(df_dates$d_days_to_death < 0))
 
 
 # Replace NA time with the maximum follow-up time, for censored data:
@@ -485,6 +503,7 @@ length(which(df_dates$days_to_death < 0))
 # FECHA_ACTUALIZACION is about 10 days after last death date
 # Try last death plus 30 days
 # If analysing all (2020 to 2024) could be today's date as collection is ongoing
+# Keep as is but explore further in later scripts using eg 30 day mortality; would need censoring data after that period though.
 
 summary(df_dates$FECHA_ACTUALIZACION)
 summary(df_dates$FECHA_DEF)
@@ -496,12 +515,12 @@ max_followup <- as.numeric(difftime(last_day,
                                     units = "days")
                            )
 max_followup
-summary(df_dates$days_to_death)
-df_dates$days_to_death[is.na(df_dates$days_to_death)] <- max_followup
-summary(df_dates$days_to_death)
+summary(df_dates$d_days_to_death)
+df_dates$d_days_to_death[is.na(df_dates$d_days_to_death)] <- max_followup
+summary(df_dates$d_days_to_death)
 
 # Check:
-summary(df_dates$days_to_death)
+summary(df_dates$d_days_to_death)
 summary(df_dates$FECHA_DEF)
 summary(as.factor(df_dates$death))
 
@@ -579,13 +598,19 @@ stopifnot("Values don't match" =
 identical(as.character(summary(data_f$UCI)[2]), # because 2 == No
           as.character(summary(as.factor(df_recode$UCI))[1]) # because 0 == No
           )
-)
+        )
 # Should be TRUE
 
 # Clean up a bit:
 data_f <- df_recode
 rm(list = c('df_recode'))
 str(data_f)
+############
+
+
+############
+# Re-censor with new variable:
+# Done in script 4_surv_outcome.R
 ############
 
 
@@ -609,7 +634,7 @@ objects_to_save <- (c('data_f', 'infile_prefix', 'outfile'))
 save(list = objects_to_save,
      file = outfile,
      compress = 'gzip'
-)
+     )
 
 # Remove/clean up session:
 all_objects <- ls()

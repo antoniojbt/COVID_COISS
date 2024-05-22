@@ -24,7 +24,8 @@ library(tidyverse)
 
 ############
 # Load a previous R session, data and objects:
-infile <- '../data/processed/1_setup_COVID19MEXICO2021.rdata.gzip'
+# infile <- '../data/processed/1_setup_COVID19MEXICO2021.rdata.gzip'
+infile <- '../data/processed/1_setup_COVID19MEXICO2021_2022.rdata.gzip'
 load(infile, verbose = TRUE)
 
 data_f <- data_f # just to get rid of RStudio warnings
@@ -32,8 +33,8 @@ dim(data_f)
 str(data_f)
 epi_head_and_tail(data_f)
 colnames(data_f)
-summary(data_f$death)
-summary(data_f$days_to_death)
+summary(data_f$d_death)
+summary(data_f$d_days_to_death)
 
 # For saving/naming outputs, should already come with the RData file though:
 infile_prefix <- infile_prefix
@@ -94,7 +95,7 @@ T1_end <- '2021-09-08'
 T2_start <- '2021-12-19'
 T2_end <- '2022-02-28'
 
-data_f$time_cuts <- NULL
+data_f$d_time_cuts <- NULL
 length(which(as.Date(data_f$FECHA_INGRESO) >= as.Date(T0_start)))
 length(which(data_f$FECHA_INGRESO < T0_start))
 
@@ -105,7 +106,7 @@ summary(data_f$FECHA_DEF)
 summary(data_f$FECHA_ACTUALIZACION)
 summary(data_f$FECHA_SINTOMAS)
 
-data_f$time_cuts <- ifelse(data_f$FECHA_INGRESO >= T0_start & data_f$FECHA_INGRESO <= T0_end, 'T0',
+data_f$d_time_cuts <- ifelse(data_f$FECHA_INGRESO >= T0_start & data_f$FECHA_INGRESO <= T0_end, 'T0',
                            ifelse(data_f$FECHA_INGRESO >= T1_start & data_f$FECHA_INGRESO <= T1_end, 'T1',
                                   ifelse(data_f$FECHA_INGRESO >= T2_start & data_f$FECHA_INGRESO <= T2_end, 'T2', #NA)))
                                          ifelse(data_f$FECHA_INGRESO < T0_start, 'pre-T0',
@@ -115,8 +116,8 @@ data_f$time_cuts <- ifelse(data_f$FECHA_INGRESO >= T0_start & data_f$FECHA_INGRE
                                                                      NA
                                                                      )))))))
 
-data_f$time_cuts
-data_f$time_cuts <- factor(data_f$time_cuts,
+data_f$d_time_cuts
+data_f$d_time_cuts <- factor(data_f$d_time_cuts,
                            levels = c('pre-T0', 'T0',
                                       'gap_T0_T1', 'T1',
                                       'gap_T1_T2', 'T2',
@@ -124,17 +125,17 @@ data_f$time_cuts <- factor(data_f$time_cuts,
                            # labels = levels,
                            ordered = TRUE
                            )
-summary(data_f$time_cuts)
+summary(data_f$d_time_cuts)
 
 # Plot:
-i <- 'time_cuts'
+i <- 'd_time_cuts'
 file_n <- 'plots_bar'
 suffix <- 'pdf'
 infile_prefix
 outfile <- sprintf(fmt = '%s/%s_%s.%s', infile_prefix, file_n, i, suffix)
 outfile
 plot_list <- list()
-plot_1 <- epi_plot_bar(data_f, var_x = 'time_cuts')
+plot_1 <- epi_plot_bar(data_f, var_x = 'd_time_cuts')
 plot_list[[i]] <- plot_1
 my_plot_grid <- epi_plots_to_grid(plot_list = plot_list)
 epi_plot_cow_save(file_name = outfile, plot_grid = my_plot_grid)
@@ -155,13 +156,21 @@ epi_head_and_tail(interv_labels, cols = 4)
 data_interv <- data_f %>% left_join(interv_labels[, c(2, 4)],
                                     by = c('ENTIDAD_UM'),
                                     )
-summary(as.factor(data_interv$intervention))
-data_interv$intervention <- factor(data_interv$intervention,
+
+# Means 'intervention' variable has been added
+# Add 'd_' for quick look up later if many more derived variables are created:
+data_interv$d_intervention <- data_interv$intervention
+data_interv$intervention <- NULL
+str(data_interv)
+
+summary(as.factor(data_interv$d_intervention))
+data_interv$d_intervention <- factor(data_interv$d_intervention,
                                    levels = c('non-COISS', 'COISS', 'other'),
                                    ordered = TRUE
                                    )
-summary(data_interv$intervention)
+summary(data_interv$d_intervention)
 str(data_interv)
+
 
 # Clean up:
 data_f <- data_interv
@@ -171,14 +180,14 @@ ls()
 
 ###
 # Plot:
-i <- 'intervention'
+i <- 'd_intervention'
 file_n <- 'plots_bar'
 suffix <- 'pdf'
 infile_prefix
 outfile <- sprintf(fmt = '%s/%s_%s.%s', infile_prefix, file_n, i, suffix)
 outfile
 plot_list <- list()
-plot_1 <- epi_plot_bar(data_f, var_x = 'intervention')
+plot_1 <- epi_plot_bar(data_f, var_x = 'd_intervention')
 plot_list[[i]] <- plot_1
 my_plot_grid <- epi_plots_to_grid(plot_list = plot_list)
 epi_plot_cow_save(file_name = outfile, plot_grid = my_plot_grid)
@@ -190,18 +199,18 @@ epi_plot_cow_save(file_name = outfile, plot_grid = my_plot_grid)
 # Exclude 'others' (CDMX, EdoMex)
 epi_head_and_tail(data_f)
 colnames(data_f)
-summary(data_f$intervention)
+summary(data_f$d_intervention)
 
-data_f_COISS <- data_f[which(!as.character(data_f$intervention) == 'other'), ]
+data_f_COISS <- data_f[which(!as.character(data_f$d_intervention) == 'other'), ]
 dim(data_f)
 dim(data_f_COISS)
-summary(data_f$intervention)
-summary(data_f$intervention)[1] + summary(data_f$intervention)[2]
-summary(data_f_COISS$intervention)
+summary(data_f$d_intervention)
+summary(data_f$d_intervention)[1] + summary(data_f$d_intervention)[2]
+summary(data_f_COISS$d_intervention)
 
 # Drop level as now 0:
-data_f_COISS$intervention <- epi_clean_drop_zero_levels_vector(factor_var = data_f_COISS$intervention)
-summary(data_f_COISS$intervention)
+data_f_COISS$d_intervention <- epi_clean_drop_zero_levels_vector(factor_var = data_f_COISS$d_intervention)
+summary(data_f_COISS$d_intervention)
 
 # Remove objects, keep objects names so that code can be re-run as several DBs:
 data_f <- data_f_COISS
@@ -230,7 +239,7 @@ objects_to_save <- (c('data_f', 'infile_prefix', 'outfile'))
 save(list = objects_to_save,
      file = outfile,
      compress = 'gzip'
-)
+     )
 
 # Remove/clean up session:
 all_objects <- ls()

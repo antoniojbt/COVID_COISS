@@ -27,7 +27,8 @@ library(summarytools)
 
 ############
 # Load a previous R session, data and objects:
-infile <- '../data/processed/3_desc_plots_COVID19MEXICO2021_COVID-only_COISS-only.rdata.gzip'
+# infile <- '../data/processed/3_desc_plots_COVID19MEXICO2021_COVID-only_COISS-only.rdata.gzip'
+infile <- '../data/processed/3_desc_plots_COVID19MEXICO2021_2022_COVID-only_COISS-only.rdata.gzip'
 load(infile, verbose = TRUE)
 data_f <- data_f # just to get rid of RStudio warnings
 dim(data_f)
@@ -55,12 +56,12 @@ outfile
 # Descriptive stats survival:
 dim(data_f)
 str(data_f)
-summary(data_f$days_to_death)
-summary(factor(data_f$death))
+summary(data_f$d_days_to_death)
+summary(factor(data_f$d_death))
 # check: have fewer NAs, need to check
-summary(data_f$intervention)
+summary(data_f$d_intervention)
 
-summary(data_f$time_cuts)
+summary(data_f$d_time_cuts)
 summary(data_f$FECHA_SINTOMAS)
 # check as max symptoms here is after FECHA_ACTUALIZACION
 summary(data_f$FECHA_ACTUALIZACION)
@@ -68,21 +69,20 @@ summary(data_f$FECHA_INGRESO)
 summary(data_f$FECHA_DEF)
 
 
-mean(data_f$days_to_death)
-median(data_f$days_to_death)
-range(data_f$days_to_death)
-sd(data_f$days_to_death)
+mean(data_f$d_days_to_death)
+median(data_f$d_days_to_death)
+range(data_f$d_days_to_death)
+sd(data_f$d_days_to_death)
 # These are already saved in stats_sum so just explore
 
-
-# Frequency table for outcome (death):
-table(data_f$death)
+# Frequency table for outcome (d_death):
+table(data_f$d_death)
 
 # Proportion of events and censored cases
-prop.table(table(data_f$death))
+prop.table(table(data_f$d_death))
 
 # Detailed summary: 
-summarytools::descr(data_f$days_to_death)
+summarytools::descr(data_f$d_days_to_death)
 ###
 ############
 
@@ -90,12 +90,12 @@ summarytools::descr(data_f$days_to_death)
 ############
 ###
 # Plot K-M
-# Create a Surv object
-summary(data_f$intervention)
-str(data_f$intervention)
+# Create a Surv object:
+summary(data_f$d_intervention)
+str(data_f$d_intervention)
 
-surv_object <- survival::Surv(time = data_f$days_to_death,
-                              event = data_f$death
+surv_object <- survival::Surv(time = data_f$d_days_to_death,
+                              event = data_f$d_death
                               )
 str(surv_object)
 
@@ -107,7 +107,7 @@ surv_fit <- survival::survfit(surv_object ~ 1,
 str(surv_fit)
 surv_fit
 
-# Plot the Kaplan-Meier survival curve
+# Plot KM survival curve:
 km_1 <- survminer::ggsurvplot(surv_fit,
                    data = data_f,
                    conf.int = TRUE,
@@ -118,7 +118,7 @@ km_1 <- survminer::ggsurvplot(surv_fit,
                    surv.median.line = "hv"
                    )
 
-i <- 'days_to_death'
+i <- 'd_days_to_death'
 file_n <- 'plots_KM'
 suffix <- 'pdf'
 outfile <- sprintf(fmt = '%s/%s_%s.%s', infile_prefix, file_n, i, suffix)
@@ -141,7 +141,185 @@ outfile
 epi_write(file_object = km_1$data.survplot,
           file_name = outfile
           )
+###
 
+
+###
+# KM with zoom to x days and y axis:
+trunc_x <- c(0, 30)
+trunc_y <- c(0.95, 1.00)
+
+km_zoom <- ggsurvplot(surv_fit,
+           data = data_f,
+           conf.int = TRUE,
+           xlab = "Time (days)",
+           ylab = "Survival Probability",
+           title = "Kaplan-Meier Survival Curve (Zoomed In)",
+           xlim = trunc_x, # zoom in
+           ylim = trunc_y
+           # risk.table = TRUE
+           )
+
+# This is for all individuals so not particularly interesting
+
+i <- 'd_days_to_death_zoom'
+file_n <- 'plots_KM'
+suffix <- 'pdf'
+outfile <- sprintf(fmt = '%s/%s_%s.%s', infile_prefix, file_n, i, suffix)
+outfile
+ggplot2::ggsave(filename = outfile, plot = km_zoom$plot)
+
+# Save the tables from survminer as well:
+file_n <- 'survival_table_zoom'
+suffix <- 'txt'
+outfile <- sprintf(fmt = '%s/%s_%s.%s', infile_prefix, file_n, i, suffix)
+outfile
+epi_write(file_object = km_zoom$data.survtable,
+          file_name = outfile
+          )
+
+file_n <- 'data_survival_plot_zoom'
+suffix <- 'txt'
+outfile <- sprintf(fmt = '%s/%s_%s.%s', infile_prefix, file_n, i, suffix)
+outfile
+epi_write(file_object = km_zoom$data.survplot,
+          file_name = outfile
+          )
+
+###
+
+
+###
+# Truncate follow up time so that plots can be visualised better
+# Means re-running the fit
+# Effect? Plots are more readable, but we lose some data; survival probably now goes from 0 to 1, eg looks dramatic, but overall death proportion is ~3%
+# Events are not re-censored though, hence the drop in survival
+# Re-censoring below, keep these for comparison
+
+# max_followup_time <- 30
+max_followup_time <- 60
+
+# Truncate data:
+data_f_truncated <- data_f %>%
+  filter(d_days_to_death <= max_followup_time)
+
+# Re-run fit Kaplan-Meier model:
+surv_object <- survival::Surv(time = data_f_truncated$d_days_to_death,
+                              event = data_f_truncated$d_death
+                              )
+str(surv_object)
+
+
+# Fit a Kaplan-Meier survival curve
+surv_fit_truncated <- survival::survfit(surv_object ~ 1,
+                                        data = data_f_truncated
+                                       )
+str(surv_fit_truncated)
+surv_fit_truncated
+
+# Plot the Kaplan-Meier survival curve
+km_x_days <- ggsurvplot(surv_fit_truncated,
+           data = data_f_truncated,
+           conf.int = TRUE,
+           xlab = "Time (days)",
+           ylab = "Survival Probability",
+           title = "Kaplan-Meier Survival Curve (Truncated Follow-Up)",
+           risk.table = TRUE)
+
+i <- sprintf('d_days_to_death_%s', max_followup_time)
+file_n <- 'plots_KM'
+suffix <- 'pdf'
+outfile <- sprintf(fmt = '%s/%s_%s.%s', infile_prefix, file_n, i, suffix)
+outfile
+ggplot2::ggsave(filename = outfile, plot = km_x_days$plot)
+
+# Save the tables from survminer as well:
+file_n <- 'survival_table_trunc'
+suffix <- 'txt'
+outfile <- sprintf(fmt = '%s/%s_%s.%s', infile_prefix, file_n, i, suffix)
+outfile
+epi_write(file_object = km_x_days$data.survtable,
+          file_name = outfile
+          )
+
+file_n <- 'data_survival_plot_trunc'
+suffix <- 'txt'
+outfile <- sprintf(fmt = '%s/%s_%s.%s', infile_prefix, file_n, i, suffix)
+outfile
+epi_write(file_object = km_x_days$data.survplot,
+          file_name = outfile
+          )
+###
+############
+
+
+############
+# Re-censor and re-define variables as follow-up time is too long if based on FECHA_INGRESO
+
+###
+# Define new censoring time
+censoring_time <- 30 # for new cut-off for follow-up time, e.g. 30 days
+
+# Re-introduce new censoring:
+data_f$d_death_30 <- ifelse(data_f$d_days_to_death > censoring_time, 0, data_f$d_death)
+data_f$d_days_to_death_30 <- pmin(data_f$d_days_to_death, censoring_time)
+
+data_f$d_death_30 <- as.integer(data_f$d_death_30)
+
+summary(data_f$d_death_30)
+summary(data_f$d_days_to_death_30)
+table(data_f$d_days_to_death_30)
+###
+
+
+###
+# Fit Kaplan-Meier model with censoring
+surv_obj <- Surv(time = data_f$d_days_to_death_30,
+                 event = data_f$d_death_30
+                 )
+
+surv_fit_censored <- survfit(surv_obj ~ 1,
+                             data = data_f
+                             )
+###
+
+
+###
+# Plot the Kaplan-Meier survival curve with censoring
+ylim <- c(0.95, 1.00)
+
+km_censor <- ggsurvplot(surv_fit_censored,
+           data = data_f,
+           conf.int = TRUE,
+           xlab = "Time (days)",
+           ylab = "Survival Probability",
+           title = "Kaplan-Meier Survival Curve (Censored Follow-Up)",
+           ylim = ylim,
+           risk.table = TRUE)
+
+i <- sprintf('d_days_to_death_censor_%s', censoring_time)
+file_n <- 'plots_KM'
+suffix <- 'pdf'
+outfile <- sprintf(fmt = '%s/%s_%s.%s', infile_prefix, file_n, i, suffix)
+outfile
+ggplot2::ggsave(filename = outfile, plot = km_1$plot)
+
+# Save the tables from survminer as well:
+file_n <- 'survival_table'
+suffix <- 'txt'
+outfile <- sprintf(fmt = '%s/%s_%s.%s', infile_prefix, file_n, i, suffix)
+outfile
+epi_write(file_object = km_1$data.survtable,
+          file_name = outfile
+          )
+
+file_n <- 'data_survival_plot'
+suffix <- 'txt'
+outfile <- sprintf(fmt = '%s/%s_%s.%s', infile_prefix, file_n, i, suffix)
+outfile
+epi_write(file_object = km_1$data.survplot,
+          file_name = outfile
+          )
 ###
 ############
 
@@ -166,7 +344,7 @@ objects_to_save <- (c('data_f', 'infile_prefix', 'outfile'))
 save(list = objects_to_save,
      file = outfile,
      compress = 'gzip'
-)
+     )
 
 # Remove/clean up session:
 all_objects <- ls()
