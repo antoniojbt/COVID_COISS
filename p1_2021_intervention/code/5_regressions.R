@@ -69,6 +69,20 @@ outfile
 
 
 ############
+# Run sub_sampling script as taking too long to get regressions
+# Test code first with sub-sample:
+source('/Users/antoniob/Documents/work/science/devel/github/antoniojbt/episcout/R/sub_sampling.R')
+
+# Should now have data_f_sub:
+epi_head_and_tail(data_f_sub)
+table(data_f[[outcome_var]])
+table(data_f_sub[[outcome_var]])
+prop.table(table(data_f[[outcome_var]]))
+prop.table(table(data_f_sub[[outcome_var]]))
+############
+
+
+############
 # Univariate tests
 # Chi-squared test
 
@@ -166,7 +180,6 @@ for (i in names(by_time_cuts)) {
     }
 
 print(chi_df)
-
 ############
 
 
@@ -180,8 +193,13 @@ mod_spec
 model_formula <- as.formula(mod_spec)
 
 # Fit the model
+# Use sub-sample:
+# df <- data_f
+df <- data_f_sub
+
+
 model_1 <- glm(model_formula,
-               data = data_f, # or e.g. pre-T0
+               data = df, # or e.g. pre-T0
                family = binomial
                )
 
@@ -274,7 +292,11 @@ covars <- c("d_intervention",
             # "UCI" # high NA's
             )
 
-lapply(data_f[, covars], summary)
+# Use sub-sample:
+# df <- data_f
+df <- data_f_sub
+
+lapply(df[, covars], summary)
 
 # Setup formula:
 outcome_var <- 'd_death_30'
@@ -301,14 +323,14 @@ mod_form_surv
 
 ###
 # Survival
-str(data_f)
+str(df)
 fit <- surv_fit
 
 surv_fit <- survfit(mod_form_surv,
-               data = data_f
+               data = df
                )
 
-surv_fit_plot <- ggsurvplot(fit, data = data_f, conf.int = TRUE,
+surv_fit_plot <- ggsurvplot(fit, data = df, conf.int = TRUE,
                             xlab = "Time (days)", ylab = "Survival Probability",
                             title = "Kaplan-Meier Survival Curves by Time Period"
                             )
