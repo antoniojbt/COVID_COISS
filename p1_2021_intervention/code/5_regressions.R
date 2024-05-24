@@ -100,13 +100,13 @@ chi_t$observed
 # By d_intervention and date:
 summary(data_f$d_time_cuts)
 
-pre_T0 <- data_f[data_f$d_time_cuts == 'pre_T0', ]
+pre_T0 <- data_f[data_f$d_time_cuts == 'pre-T0', ]
 T0 <- data_f[data_f$d_time_cuts == 'T0', ]
 gap_T1_T0 <- data_f[data_f$d_time_cuts == 'gap_T1_T0', ]
 T1 <- data_f[data_f$d_time_cuts == 'T1', ]
 gap_T1_T2 <- data_f[data_f$d_time_cuts == 'gap_T1_T2', ]
 T2 <- data_f[data_f$d_time_cuts == 'T2', ]
-post_T2 <- data_f[data_f$d_time_cuts == 'post_T2', ]
+post_T2 <- data_f[data_f$d_time_cuts == 'post-T2', ]
 
 summary(data_f$d_intervention)
 summary(factor(data_f$d_death))

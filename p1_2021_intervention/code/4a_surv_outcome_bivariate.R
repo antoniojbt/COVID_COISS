@@ -22,6 +22,7 @@ library(tidyverse)
 library(survival)
 library(survminer)
 library(summarytools)
+library(ggrepel)
 ############
 
 
@@ -311,8 +312,9 @@ epi_write(file_object = as.data.frame(counts_by_dates_outcome),
           file_name = outfile
           )
 
-props_by_dates_outcome <- round(prop.table(counts_by_dates_outcome), digits = 2)
+props_by_dates_outcome <- round(prop.table(counts_by_dates_outcome), digits = 4)
 str(props_by_dates_outcome)
+props_by_dates_outcome
 
 i <- outcome_var
 file_n <- 'props_by_dates_outcome'
@@ -339,6 +341,7 @@ str(surv_fit_point)
 surv_fit_point$strata
 summary(surv_fit_point)
 
+ylim <- c(0.90, 1.00)
 km_grps_dates <- ggsurvplot(surv_fit_point,
                             data = data_f,
                             xlab = "Time (days)",
@@ -346,9 +349,10 @@ km_grps_dates <- ggsurvplot(surv_fit_point,
                             title = "Kaplan-Meier Survival Curves by Intervention and Study Points",
                             # facet.by = 'd_intervention', #"d_time_cuts",
                             risk.table = TRUE,  # Add risk table
-                            pval = TRUE  # Add p-value
+                            pval = TRUE,  # Add p-value
+                            ylim = ylim
                             )
-# Still errors with faceting
+# Still errors with faceting so print separately
 
 i <- time_var
 file_n <- 'plots_km_group_dates'
@@ -358,8 +362,8 @@ outfile
 ggplot2::ggsave(filename = outfile,
                 plot = km_grps_dates$plot,
                 units = 'in',
-                height = 15,
-                width = 15
+                height = 25,
+                width = 25
                 )
 
 # Save the tables from survminer as well:
@@ -378,50 +382,149 @@ outfile
 epi_write(file_object = km_grps_dates$data.survplot,
           file_name = outfile
           )
+
+###
+# # Print labels next to lines
+# # Extract the ggplot object from the ggsurvplot object:
+# km_grps_dates_gg <- km_grps_dates$plot
+# 
+# # Extract the plot data and the labels ('strata') info:
+# str(km_grps_dates_gg)
+# km_grps_dates_gg$data$surv
+# strata_info <- km_grps_dates_gg$data$strata
+# strata_info <- as.factor(strata_info)
+# data_info <- km_grps_dates_gg$data
+# epi_head_and_tail(data_info)
+# colnames(data_info)
+# 
+# # Add labels to the lines using geom_label_repel
+# km_grps_dates_labels <- km_grps_dates_gg +
+#   geom_label_repel(data = data_info,
+#                    aes(x = n.event, y = surv, label = strata_info, color = strata_info),
+#                    nudge_x = 1,
+#                    nudge_y = 0.02,
+#                    segment.color = 'grey50',
+#                    direction = "y",
+#                    show.legend = FALSE
+#                    # check_overlap = TRUE
+#                    ) +
+#     theme(legend.position = "none")
+# 
+# # Print the updated plot
+# print(km_grps_dates_labels)
+# 
+# # Works but hard to get the labels in the right places
 ###
 
 ###
-# Plot instead separately for each time cut-off:
+# Plot instead separately for each time cut-off
+# Plotting below misbehaving because Surv() and survfit have issues with string variables and variable passing, plotting the same every time if within loop with dynamic variables
+# Resorted to subsetting before, passing vars directly to survfit
+
+# plots look the same, risk tables have the same numbers, check if the data is the same (it was)
+# Re-checking and re-coding:
+str(data_f$d_time_cuts)
+typeof(data_f$d_time_cuts)
+data_f$d_time_cuts <- as.factor(data_f$d_time_cuts)  # Ensure it's a factor
+str(data_f$d_time_cuts)
+typeof(data_f$d_time_cuts)
+
 date_cuts <- levels(data_f$d_time_cuts)
-km_dates_by_levels <- epi_plot_list(vars_to_plot = date_cuts)
+
+# TO DO: continue here
+# Set-up lists to hold loop info:
+plots_km_dates_by_levels <- epi_plot_list(vars_to_plot = date_cuts)
+data_plot_km_dates_by_levels <- list() # plot_1$data.survplot
+surv_table_km_dates_by_levels <- list() # plot_1$data.survtable
 
 # Plot with zoom on y axis:
 ylim <- c(0.90, 1.00)
 
-for (i in date_cuts) {
-    # print(i)
-    surv_fit_level <- survfit(Surv(data_f[[time_var]], data_f[[outcome_var]]) ~ data_f[['d_intervention']],
-                              data = subset(data_f, d_time_cuts == i)
+pre_T0 <- data_f[data_f$d_time_cuts == 'pre-T0', ]
+T0 <- data_f[data_f$d_time_cuts == 'T0', ]
+gap_T1_T0 <- data_f[data_f$d_time_cuts == 'gap_T0_T1', ]
+T1 <- data_f[data_f$d_time_cuts == 'T1', ]
+gap_T1_T2 <- data_f[data_f$d_time_cuts == 'gap_T1_T2', ]
+T2 <- data_f[data_f$d_time_cuts == 'T2', ]
+post_T2 <- data_f[data_f$d_time_cuts == 'post-T2', ]
+
+subsets_by_cut <- list(pre_T0, T0, gap_T1_T0, T1, gap_T1_T2, T2, post_T2)
+lapply(subsets_by_cut, dim)
+
+for (i in subsets_by_cut) {
+    # Each i is a subset, other methods didn't work properly
+    # Fit model:
+    surv_fit_level <- survfit(Surv(time = d_days_to_death_30,
+                                   event = d_death_30
+                                   ) ~ d_intervention,
+                              data = i
                               )
-    
+
+    # Check underlying data:
+    print(nrow(i))
+    # Check model specs:
+    print(summary(surv_fit_level, times = c(1, median(i[["d_days_to_death_30"]], na.rm = TRUE))))  # Print summary at specific times
+
     plot_1 <- ggsurvplot(surv_fit_level,
-                         data = subset(data_f, d_time_cuts == i),
+                         data = i,
                          xlab = "Time (days)",
                          ylab = "Survival Probability",
-                         title = paste("KM Survival Curves -", i),
+                         # TO DO: add title with data cut-off
+                         # title = paste("KM Survival Curves -", i),
                          risk.table = TRUE,
                          pval = TRUE,
                          ylim = ylim
                          )
     # print(plot_1$plot)
-    km_dates_by_levels[[i]] <- plot_1$plot
+    # TO DO: save to lists and then to disk:
+    # plots_km_dates_by_levels[[i]] <- plot_1$plot
+    # data_plot_km_dates_by_levels[[i]] <- plot_1$data.survplot
+    # surv_table_km_dates_by_levels[[i]] <- plot_1$data.survtable
+    
     }
 
+# Plots:
+plot_info <- plots_km_dates_by_levels[[i]]
+plot_info
+# Data behind plots:
+data_plot_info <- data_plot_km_dates_by_levels[[i]]
+data_plot_info$n.event
+# Survival tables:
+surv_table_info <- surv_table_km_dates_by_levels[[i]]
+surv_table_info$n.event
+
+
+# TO DO:
 # Save plots
-# Plot all together:
 z <- 'zoom' # or nothing
-file_n <- sprintf('plots_km_group_dates_facet_%s', z)
+file_n <- sprintf('plots_km_dates_by_levels_facet_%s', z)
 suffix <- 'pdf'
 outfile <- sprintf(fmt = '%s/%s_%s_%s.%s', infile_prefix, file_n, outcome_var, time_var, suffix)
 outfile
-my_plot_grid <- epi_plots_to_grid(km_dates_by_levels)
+my_plot_grid <- epi_plots_to_grid(plots_km_dates_by_levels)
 epi_plot_cow_save(file_name = outfile,
                   plot_grid = my_plot_grid,
                   base_width = 15,
                   base_height = 15
                   )
 
-# Could get risk table and data behind each plot but already elsewhere
+# TO DO:
+# Save the tables from survminer as well:
+file_n <- 'survival_table_km_group_dates'
+suffix <- 'txt'
+outfile <- sprintf(fmt = '%s/%s_%s.%s', infile_prefix, file_n, i, suffix)
+outfile
+epi_write(file_object = km_grps_dates$data.survtable,
+          file_name = outfile
+          )
+
+file_n <- 'data_survival_plot_km_group_dates'
+suffix <- 'txt'
+outfile <- sprintf(fmt = '%s/%s_%s.%s', infile_prefix, file_n, i, suffix)
+outfile
+epi_write(file_object = km_grps_dates$data.survplot,
+          file_name = outfile
+          )
 ###
 ############
 

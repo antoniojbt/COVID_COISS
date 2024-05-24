@@ -39,12 +39,13 @@
 
 ###
 # TO DOs:
+# Check loops with survfit as issues with passing dynamic variables, meaning plots are the same
 # Q's:
   # There are gaps between dates for start and end for T0, 1 and 2
   # Check max symptoms here is after FECHA_ACTUALIZACION
   # re-check NAs for death at script 4
   # Are re-admissions an issue? e.g. violate independence assumption
-  # Use 30-day mortality?
+  # Use 30-day mortality
 
 # Run as sensitivity analyses:
   # Reproduce results from paper  
