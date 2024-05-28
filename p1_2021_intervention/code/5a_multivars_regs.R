@@ -2,7 +2,7 @@
 # COISS paper 1
 # L. Bonifaz
 # May 2024
-# Simple regression setup
+# Multiple variable regression setup
 ############
 
 
@@ -72,156 +72,9 @@ prop.table(table(data_f_sub[[outcome_var]]))
 
 
 ############
-# Univariate tests
-# Chi-squared test
+# Set up and loop
 
-# By d_intervention:
-table(data_f$d_death, data_f$d_intervention)
-table(data_f$d_death_30, data_f$d_intervention)
-# These will be different as e.g. using follow-up to 30 days will change counts of events occurred by given date
-
-chi_t <- chisq.test(data_f$d_death, data_f$d_intervention)
-chi_t$observed
-str(chi_t)
-chi_t$observed
-
-
-# By d_intervention and date:
-summary(data_f$d_time_cuts_prev)
-
-# Could just cycle thorugh this but can't remember if code was misbehaving
-# Survival models were when in a loop, but moved those out
-# Keeping for now
-pre_T0 <- data_f[data_f$d_time_cuts_prev == 'pre-T0', ]
-T0 <- data_f[data_f$d_time_cuts_prev == 'T0', ]
-gap_T1_T0 <- data_f[data_f$d_time_cuts_prev == 'gap_T1_T0', ]
-T1 <- data_f[data_f$d_time_cuts_prev == 'T1', ]
-gap_T1_T2 <- data_f[data_f$d_time_cuts_prev == 'gap_T1_T2', ]
-T2 <- data_f[data_f$d_time_cuts_prev == 'T2', ]
-post_T2 <- data_f[data_f$d_time_cuts_prev == 'post-T2', ]
-
-summary(data_f$d_intervention)
-summary(factor(data_f$d_death))
-
-
-# Vars to test:
-# outcome_var <- 'd_death'
-outcome_var <- 'd_death_30'
-
-# Initialize list and df for results by time cuts and chi-sq test:
-by_time_cuts <- list()
-chi_df <- data.frame()
-
-# Loop through each level of d_time_cuts
-for (i in levels(data_f$d_time_cuts)) {
-    # print(i)
-    # Subset time cut:
-    t <- data_f[data_f$d_time_cuts == i, ]
-    
-    # Tables:
-    contingency_table <- table(t[[outcome_var]], t$d_intervention)
-    prop_table <- round(prop.table(contingency_table), digits = 3)
-    
-    # Test:
-    chi_test <- chisq.test(t[[outcome_var]], t$d_intervention)
-    # print(chi_test)
-    
-    # Save results:
-    by_time_cuts[[i]] <- list(
-        contingency_table = contingency_table,
-        proportions = prop_table,
-        chi_test = chi_test
-        )
-    
-    # Append chi-squared:
-    chi_df <- rbind(chi_df, data.frame(
-        time_cut = i,
-        chi_squared = chi_test$statistic,
-        p_value = chi_test$p.value,
-        df = chi_test$parameter
-    ))
-    }
-
-# Save:
-file_n <- 'chi_squared'
-suffix <- 'txt'
-i <- outcome_var
-outfile <- sprintf(fmt = '%s/%s_%s.%s', infile_prefix, file_n, i, suffix)
-outfile
-epi_write(file_object = chi_df,
-          file_name = outfile
-          )
-
-# Save proportions and contingency tables:
-for (i in names(by_time_cuts)) {
-    file_n <- 'contingency_table'
-    suffix <- 'txt'
-    outfile <- sprintf(fmt = '%s/%s_%s_%s.%s', infile_prefix, file_n, i, outcome_var, suffix)
-    # outfile
-    epi_write(file_object = by_time_cuts[[i]]$contingency_table,
-              file_name = outfile
-              )
-    
-    file_n <- 'proportions'
-    suffix <- 'txt'
-    outfile <- sprintf(fmt = '%s/%s_%s_%s.%s', infile_prefix, file_n, i, outcome_var, suffix)
-    # outfile
-    epi_write(file_object = by_time_cuts[[i]]$proportions,
-              file_name = outfile
-    )
-    }
-
-print(chi_df)
-############
-
-
-############
-# Simple regression setup
-
-# Setup formula:
-outcome_var <- 'd_death_30'
-mod_spec <- sprintf("%s ~ d_intervention", outcome_var)
-mod_spec
-model_formula <- as.formula(mod_spec)
-
-# Fit the model
-# Use sub-sample:
-# df <- data_f
-df <- data_f_sub
-
-
-model_1 <- glm(model_formula,
-               data = df, # or e.g. pre-T0
-               family = binomial
-               )
-
-# Summarize the model
-res <- summary(model_1)
-res
-
-# # Get predicted probabilities
-# predicted_probs <- predict(model_1, type = "response")
-# predicted_probs
-# 
-# # Get predicted classes (0 or 1) using a threshold of 0.5
-# predicted_classes <- ifelse(predicted_probs > 0.5, 1, 0)
-# 
-# # View the first few predicted probabilities and classes
-# head(predicted_probs)
-# head(predicted_classes)
-# 
-# # Create a confusion matrix
-# caret::confusionMatrix(as.factor(predicted_classes), as.factor(data_f$d_death))
-# 
-# # Plot the ROC curve
-# roc_curve <- roc(data_f$d_death, predicted_probs)
-# plot(roc_curve)
-############
-
-
-############
 ###
-
 # df <- data_f_sub
 df <- data_f_sub
 df
@@ -248,18 +101,86 @@ df[["d_intervention"]]
 
 
 ###
+# Setup covariates
+# Run simple (above) then adjusted for various models
+
+colnames(data_f)
+summary(data_f$SECTOR)
+summary(data_f$ORIGEN)
+summary(data_f)
+
+colnames(data_f)
+
+# Excluded, admin vars:
+# "ID_REGISTRO"
+# "FECHA_ACTUALIZACION"
+
+# Would correlate:
+# "FECHA_DEF"
+# "ENTIDAD_UM" # because it determines d_intervention
+# "MUNICIPIO_RES" # would correlate with ENTIDAD_UM but need to check
+# "ENTIDAD_NAC" # would correlate with ENTIDAD_UM but need to check
+# "ENTIDAD_RES" # would correlate with ENTIDAD_UM but need to check
+# "d_days_to_death"
+
+
+# Unsure:
+extra_check <- c("FECHA_INGRESO", # surv analysis will account for it
+                 "FECHA_SINTOMAS" # need to check db manual
+                 )
+
+# Covariates:
+covars <- c("d_intervention",
+            # "d_time_cuts", # exclude for now as running models for each cut
+            "EDAD",
+            "ORIGEN",
+            "SECTOR",
+            "SEXO",
+            # "TIPO_PACIENTE", # errors, don't know why
+            # "INTUBADO", # high NA's
+            "NEUMONIA",
+            "NACIONALIDAD",
+            # "EMBARAZO", # errors, don't know why; high NA's
+            # "HABLA_LENGUA_INDIG", # errors, don't know why
+            "INDIGENA",
+            "DIABETES",
+            "EPOC",
+            "ASMA",
+            "INMUSUPR",
+            "HIPERTENSION",
+            "OTRA_COM",
+            "CARDIOVASCULAR",
+            "OBESIDAD",
+            "RENAL_CRONICA",
+            "TABAQUISMO",
+            "OTRO_CASO"
+            # "TOMA_MUESTRA_LAB", # admin var, may correlate
+            # "RESULTADO_LAB", # admin var, may correlate
+            # "TOMA_MUESTRA_ANTIGENO", # admin var, may correlate
+            # "RESULTADO_ANTIGENO", # admin var, may correlate
+            # "CLASIFICACION_FINAL", # admin var, may correlate
+            # "MIGRANTE", # errors, don't know why; high NA's
+            # "PAIS_NACIONALIDAD", # errors, don't know why
+            # "PAIS_ORIGEN", # errors, don't know why; high NA's
+            # "UCI" # high NA's
+            )
+
+lapply(df[, covars], summary)
+###
+
+
+###
 # Initialize storage for results, already have proportions, tables and chi-sq:
 # tables_list <- list()
 # props_list <- list()
 # chi_tests_list <- list()
 glm_results_list <- list()
 
-
 # Keep track of indices:
 count <- 0
 
 # Simple regression:
-covars <- 'd_intervention'
+# covars <- 'd_intervention'
 
 # GLM, no interaction terms:
 for (i in levels(df$d_time_cuts_prev)) {
@@ -320,7 +241,7 @@ epi_write(file_object = chi_df,
 # The end:
 # Save objects, to eg .RData file:
 folder <- '../data/processed'
-script <- '5_regressions'
+script <- '5a_multivars_regs'
 infile_prefix
 suffix <- 'rdata.gzip'
 outfile <- sprintf(fmt = '%s/%s_%s.%s', folder, script, infile_prefix, suffix)
@@ -351,4 +272,3 @@ sessionInfo()
 
 # Next: run the script for xxx
 ############
-

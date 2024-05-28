@@ -419,27 +419,15 @@ epi_write(file_object = km_grps_dates$data.survplot,
 ###
 # Plot instead separately for each time cut-off
 # Plotting below misbehaving because Surv() and survfit have issues with string variables and variable passing, plotting the same every time if within loop with dynamic variables
-# Resorted to subsetting before, passing vars directly to survfit
+# Plots were the same, risk tables had the same numbers
+# Resorted to subsetting before and passing vars directly to survfit
 
-# plots look the same, risk tables have the same numbers, check if the data is the same (it was)
-# Re-checking and re-coding:
-str(data_f$d_time_cuts)
-typeof(data_f$d_time_cuts)
-data_f$d_time_cuts <- as.factor(data_f$d_time_cuts)  # Ensure it's a factor
-str(data_f$d_time_cuts)
-typeof(data_f$d_time_cuts)
-
-date_cuts <- levels(data_f$d_time_cuts)
-
-# TO DO: continue here
-# Set-up lists to hold loop info:
-plots_km_dates_by_levels <- epi_plot_list(vars_to_plot = date_cuts)
-data_plot_km_dates_by_levels <- list() # plot_1$data.survplot
-surv_table_km_dates_by_levels <- list() # plot_1$data.survtable
+# Re-coded:
 
 # Plot with zoom on y axis:
 ylim <- c(0.90, 1.00)
 
+# Subset data:
 pre_T0 <- data_f[data_f$d_time_cuts == 'pre-T0', ]
 T0 <- data_f[data_f$d_time_cuts == 'T0', ]
 gap_T1_T0 <- data_f[data_f$d_time_cuts == 'gap_T0_T1', ]
@@ -449,54 +437,69 @@ T2 <- data_f[data_f$d_time_cuts == 'T2', ]
 post_T2 <- data_f[data_f$d_time_cuts == 'post-T2', ]
 
 subsets_by_cut <- list(pre_T0, T0, gap_T1_T0, T1, gap_T1_T2, T2, post_T2)
+titles <- levels(data_f$d_time_cuts)
 lapply(subsets_by_cut, dim)
 
-for (i in subsets_by_cut) {
-    # Each i is a subset, other methods didn't work properly
+# Set-up lists to hold loop info:
+plots_km_dates_by_levels <- epi_plot_list(vars_to_plot = titles)
+data_plot_km_dates_by_levels <- list() # plot_1$data.survplot
+surv_table_km_dates_by_levels <- list() # plot_1$data.survtable
+
+# Outcome and time vars are hard-coded as couldn't get them to work in the loop if passed as variables
+# outcome_var <- 'd_death'
+# time_var <- 'd_days_to_death'
+
+counter <- 0
+for (df in subsets_by_cut) {
+    counter <- counter + 1
+    plot_title <- titles[counter]
+    # Each df is a data subset, other methods didn't work properly
     # Fit model:
-    surv_fit_level <- survfit(Surv(time = d_days_to_death_30,
-                                   event = d_death_30
+    surv_fit_level <- survfit(Surv(time = d_days_to_death, #d_days_to_death_30,
+                                   event = d_death, #d_death_30
                                    ) ~ d_intervention,
-                              data = i
+                              data = df
                               )
 
     # Check underlying data:
-    print(nrow(i))
+    print(nrow(df))
     # Check model specs:
-    print(summary(surv_fit_level, times = c(1, median(i[["d_days_to_death_30"]], na.rm = TRUE))))  # Print summary at specific times
+    print(summary(surv_fit_level,
+                  times = c(1, median(df[["d_days_to_death"]], #df[["d_days_to_death_30"]],
+                                      na.rm = TRUE)
+                            )
+                  )
+          )  # Print summary at specific times
 
     plot_1 <- ggsurvplot(surv_fit_level,
-                         data = i,
+                         data = df,
                          xlab = "Time (days)",
                          ylab = "Survival Probability",
-                         # TO DO: add title with data cut-off
-                         # title = paste("KM Survival Curves -", i),
+                         title = paste("KM Survival Curves -", plot_title),
                          risk.table = TRUE,
                          pval = TRUE,
                          ylim = ylim
                          )
     # print(plot_1$plot)
-    # TO DO: save to lists and then to disk:
-    # plots_km_dates_by_levels[[i]] <- plot_1$plot
-    # data_plot_km_dates_by_levels[[i]] <- plot_1$data.survplot
-    # surv_table_km_dates_by_levels[[i]] <- plot_1$data.survtable
+    plots_km_dates_by_levels[[plot_title]] <- plot_1$plot
+    surv_table_km_dates_by_levels[[plot_title]] <- plot_1$data.survtable
+    data_plot_km_dates_by_levels[[plot_title]] <- plot_1$data.survplot
     
     }
 
 # Plots:
-plot_info <- plots_km_dates_by_levels[[i]]
+plot_info <- plots_km_dates_by_levels[[plot_title]]
 plot_info
-# Data behind plots:
-data_plot_info <- data_plot_km_dates_by_levels[[i]]
-data_plot_info$n.event
 # Survival tables:
-surv_table_info <- surv_table_km_dates_by_levels[[i]]
+surv_table_info <- surv_table_km_dates_by_levels[[plot_title]]
 surv_table_info$n.event
+# Data behind plots:
+data_plot_info <- data_plot_km_dates_by_levels[[plot_title]]
+data_plot_info$n.event
 
 
-# TO DO:
 # Save plots
-z <- 'zoom' # or nothing
+z <- '' # zoom or nothing
 file_n <- sprintf('plots_km_dates_by_levels_facet_%s', z)
 suffix <- 'pdf'
 outfile <- sprintf(fmt = '%s/%s_%s_%s.%s', infile_prefix, file_n, outcome_var, time_var, suffix)
@@ -504,27 +507,29 @@ outfile
 my_plot_grid <- epi_plots_to_grid(plots_km_dates_by_levels)
 epi_plot_cow_save(file_name = outfile,
                   plot_grid = my_plot_grid,
-                  base_width = 15,
-                  base_height = 15
+                  base_width = 25,
+                  base_height = 25
                   )
 
-# TO DO:
-# Save the tables from survminer as well:
-file_n <- 'survival_table_km_group_dates'
-suffix <- 'txt'
-outfile <- sprintf(fmt = '%s/%s_%s.%s', infile_prefix, file_n, i, suffix)
-outfile
-epi_write(file_object = km_grps_dates$data.survtable,
-          file_name = outfile
-          )
+# Save the tables from survminer as well, needs looping:
+for (i in titles) {
+    file_n <- 'surv_table_km_dates_by_levels'
+    suffix <- 'txt'
+    outfile <- sprintf(fmt = '%s/%s_%s_%s_%s.%s', infile_prefix, file_n, outcome_var, time_var, i, suffix)
+    outfile
+    epi_write(file_object = surv_table_km_dates_by_levels[[i]],
+              file_name = outfile
+              )
+    
+    file_n <- 'data_plot_km_dates_by_levels'
+    suffix <- 'txt'
+    outfile <- sprintf(fmt = '%s/%s_%s_%s_%s.%s', infile_prefix, file_n, outcome_var, time_var, i, suffix)
+    outfile
+    epi_write(file_object = data_plot_km_dates_by_levels[[i]],
+              file_name = outfile
+              )
+    }
 
-file_n <- 'data_survival_plot_km_group_dates'
-suffix <- 'txt'
-outfile <- sprintf(fmt = '%s/%s_%s.%s', infile_prefix, file_n, i, suffix)
-outfile
-epi_write(file_object = km_grps_dates$data.survplot,
-          file_name = outfile
-          )
 ###
 ############
 

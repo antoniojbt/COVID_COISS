@@ -2,6 +2,7 @@
 # COISS paper 1
 # L. Bonifaz
 # April 2024
+# Should run all databases for COVID DGE
 ############
 
 
@@ -33,13 +34,31 @@
 # Bivariate
   # For COVID-only_COISS-only:
   # By outcome: survivors vs non-survivors
-
 ###
 
 
 ###
 # TO DOs:
-# Check loops with survfit as issues with passing dynamic variables, meaning plots are the same
+  # Check loops with survfit as issues with passing dynamic variables, meaning plots are the same. Script 4a could be cleaned up but OK for now, worked as exploratory for 2021-2022 databases. If running/joining others then simplify as complication are the T0, T1 T2 windows for analysis.
+  # Finish pretty plots:
+    # KM by date cut off and intervention
+    # plot of counts and proportions by date, outcome, and intervention
+
+  # setup HPC scripts as models take too long
+  # Run DiD as primary analysis; followed by eg Cox or MLM
+  # Check assumptions: independence, expected frequencies, sample size
+  # plot/check residuals, R2, etc
+  # Easy to digest presentation
+  # Competing Risks Analysis?
+
+# Done:
+  # needs proper selection of covariates
+  # check problems with missing data, exclude vars based on this
+  # Create a table of counts, proportions, etc. for simple overview
+  # Save tables, see tendency
+  # change follow-up to 30 days, replot 4a script with this
+
+
 # Q's:
   # There are gaps between dates for start and end for T0, 1 and 2
   # Check max symptoms here is after FECHA_ACTUALIZACION

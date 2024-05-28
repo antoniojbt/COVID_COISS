@@ -2,23 +2,9 @@
 # COISS paper 1
 # L. Bonifaz
 # May 2024
-############
 
-
-############
-# TO DO:
-  # Run DiD as primary analysis; followed by eg Cox or MLM
-  # Check assumptions: independence, expected frequencies, sample size
-  # plot/check residuals, R2, etc
-  # Easy to digest presentation
-  # Competing Risks Analysis?
-
-# Done:
-  # needs proper selection of covariates
-  # check problems with missing data, exclude vars based on this
-  # Create a table of counts, proportions, etc. for simple overview
-  # Save tables, see tendency
-  # change follow-up to 30 days, replot 4a script with this
+# Plot counts and proportions by date, outcome, and intervention for 2021-2022 data.
+# Visualise the change over time by intervention and outcome.
 ############
 
 
