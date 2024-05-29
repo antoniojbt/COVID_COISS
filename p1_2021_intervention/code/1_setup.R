@@ -133,6 +133,7 @@ library(tidyverse)
 
 
 ############
+# Old notes from when exploring processed and raw datasets:
 # Dates are SPSS export, prob seconds from origin date, then days from origin date when to csv.
 # max minus min looks like it matches the start and end dates for recruitment/analysis of effectiveness
 # September 3 to October 8,  2021 First effectiveness analysis (T1)
@@ -147,14 +148,70 @@ library(tidyverse)
 # Run 2021 database as it covers the period of interest:
 # COVID19MEXICO2021 <- '../data/raw/datos_abiertos_covid19/COVID19MEXICO2021.zip'
 # data_f <- '../data/processed/COVID19MEXICO2021_2022.rdata.gzip'
-infile_prefix <- 'COVID19MEXICO2021_2022'
+# infile_prefix <- 'COVID19MEXICO2021_2022'
 
 # Run code for any COVID database as possible:
 # data_f <- episcout::epi_read(data_f)
-epi_head_and_tail(data_f)
+############
+
+
+############
+# Load a previous R session, data and objects:
+# infile <- '../data/processed/1_setup_COVID19MEXICO2021.rdata.gzip'
+infile <- '../data/processed/0_comp_bases_COVID19MEXICO_2021_2022.rdata.gzip'
+load(infile, verbose = TRUE)
+
+data_f <- data_f # just to get rid of RStudio warnings
+dim(data_f)
 str(data_f)
-summary(data_f$FECHA_INGRESO)
+epi_head_and_tail(data_f)
 colnames(data_f)
+
+# For saving/naming outputs, should already come with the RData file though:
+infile_prefix <- infile_prefix
+infile_prefix
+# Otherwise manually:
+# infile_prefix <- 'COVID19MEXICO2021'
+############
+
+
+############
+# Find non-unique IDs
+df_dups <- data_f
+dups <- epi_clean_get_dups(df_dups, var = "ID_REGISTRO")
+dups
+# View(t(dups))
+
+# Get indices:
+unique_dup_IDs <- unique(dups$ID_REGISTRO)
+unique_dup_IDs
+inds <- which(as.character(df_dups$ID_REGISTRO) == as.character(unique_dup_IDs))
+# Add a row index:
+dups$inds <- inds
+dups
+dups[, c('ID_REGISTRO', 'inds')] 
+
+
+# TO DO: make more efficient, for now running full dataset to remove duplicates:
+# Will error if no duplicates (?) or if there are multiple groups/pairs of duplicates
+# Keep the one with the most recent FECHA_ACTUALIZACION:
+dups_keep <- dups %>%
+  group_by(ID_REGISTRO) %>%
+  filter(FECHA_ACTUALIZACION == max(FECHA_ACTUALIZACION))
+dups_keep
+dups_keep[, c('ID_REGISTRO', 'inds')] 
+
+# Macth IDs to original data:
+inds_keep <- dups_keep$inds
+df_dups <- df_dups[-inds_keep, ]
+
+# Check:
+dups <- epi_clean_get_dups(df_dups, var = "ID_REGISTRO")
+dups # should be zero
+
+# Clean up:
+data_f <- df_dups
+rm(list = c('df_dups'))
 ############
 
 
@@ -167,6 +224,34 @@ tibble::glimpse(data_f)
 
 
 # Manually convert:
+###
+# Keep copies of original date variables (as character) as can be a headache to manage once transformed for derived vars:
+
+date_cols <- c('FECHA_ACTUALIZACION',
+               'FECHA_INGRESO',
+               'FECHA_SINTOMAS',
+               'FECHA_DEF'
+               )
+lapply(data_f[, date_cols], summary)
+lapply(data_f[, date_cols], typeof)
+str(data_f[, date_cols])
+
+data_f$FECHA_ACTUALIZACION_char <- as.character(data_f$FECHA_ACTUALIZACION)
+data_f$FECHA_INGRESO_char <- as.character(data_f$FECHA_INGRESO)
+data_f$FECHA_SINTOMAS_char <- as.character(data_f$FECHA_SINTOMAS)
+data_f$FECHA_DEF_char <- as.character(data_f$FECHA_DEF)
+
+date_cols_char <- c('FECHA_ACTUALIZACION_char',
+                    'FECHA_INGRESO_char',
+                    'FECHA_SINTOMAS_char',
+                    'FECHA_DEF_char'
+                    )
+lapply(data_f[, date_cols_char], summary)
+lapply(data_f[, date_cols_char], typeof)
+str(data_f[, date_cols_char])
+###
+
+
 ###
 length(unique(data_f$FECHA_DEF))
 unique(data_f$FECHA_DEF)
@@ -223,7 +308,7 @@ char_cols <- data_f %>%
 	select_if(~ epi_clean_cond_chr_fct(.)) %>%
 	colnames()
 char_cols
-epi_head_and_tail(data_f[, char_cols], cols = 3)
+epi_head_and_tail(data_f[, char_cols], cols = 7)
 
 # Explicitly check the type of each column:
 sapply(data_f, typeof)
@@ -258,6 +343,8 @@ dim(data_f)
 
 ############
 # Use data dictionary to add labels and levels to factor columns
+
+###
 # Add levels and labels
 table(data_f$ORIGEN)
 var_fact <- data_f$ORIGEN
@@ -277,11 +364,42 @@ epi_head_and_tail(lookup_df)
 str(lookup_df)
 head(lookup_df$variable)
 colnames(lookup_df)
+###
 
+###
+# Function here as haven't updated episcout:
+epi_clean_label <- function(data_df, lookup_df) {
+    # Ensure the lookup dataframe is in the correct format
+    lookup_df <- lookup_df %>%
+        mutate(level = as.character(level))  # Convert keys to character if not already
+    
+    # Iterate over each variable in the lookup table
+    for (v in unique(lookup_df$variable)) {
+        if (v %in% names(data_df)) {
+            # Get levels and labels for this variable
+            levels_and_labels <- lookup_df %>%
+                filter(variable == eval(v)) %>% # This errors, as does !!sym(v)
+                select(level, label) %>%
+                arrange(as.numeric(level))  # Ensure levels are in the correct order
+            
+            # Convert the relevant column in data_df to a factor
+            data_df[[v]] <- factor(data_df[[v]],
+                                   levels = levels_and_labels$level,
+                                   labels = levels_and_labels$label)
+        }
+    }
+    
+    return(data_df)
+}
+###
+
+
+###
 df_fact <- epi_clean_label(data_df = data_f,
                            lookup_df = lookup_df
                            )
 str(df_fact)
+
 data_f <- df_fact
 rm(list = c('df_fact'))
 # Missing SI_NO labels for int/fact variables; 'SI' = 1, 'NO' = 2
@@ -349,8 +467,12 @@ vec_test <- epi_clean_fct_to_na(data_f$SEXO, NA_labels)
 summary(vec_test)
 
 # Specify columns to modify:
-cols_mod <- colnames(df_ord)[7:40]
-str(df_ord)
+dim(df_ord)
+cols_mod <- which(sapply(df_ord, is.factor))
+cols_mod <- names(cols_mod)
+cols_mod
+str(df_ord[, cols_mod])
+
 
 for (i in cols_mod) {
   df_ord[[i]] <- epi_clean_fct_to_na(df_ord[[i]], NA_labels)
@@ -370,14 +492,38 @@ rm(list = c('df_ord'))
 
 ############
 # Drop levels with 0 as these are NAs
+
+###
+# Also copying function here until I update episcout:
+epi_clean_drop_zero_levels_vector <- function(factor_var) {
+    # Ensure the input is a factor
+    if (!is.factor(factor_var)) {
+        stop("The input variable is not a factor.")
+    }
+    
+    # Get the levels that are present in the factor
+    present_levels <- levels(factor_var)[table(factor_var) > 0]
+    
+    # Drop levels that are zero
+    cleaned_factor <- factor(factor_var, levels = present_levels)
+    
+    return(cleaned_factor)
+}
+###
+
+
+###
 vec_test <- data_f$SEXO
 summary(vec_test)
 vec_test <- epi_clean_drop_zero_levels_vector(factor_var = vec_test)
 summary(vec_test)
 
-# Loop:
+# To loop:
 df_cleaned <- data_f
+dim(df_cleaned)
+###
 
+###
 df_cleaned[] <- lapply(df_cleaned, function(column) {
   if (is.factor(column)) {
     epi_clean_drop_zero_levels_vector(column)
@@ -390,9 +536,11 @@ str(df_cleaned)
 summary(df_cleaned$SEXO)
 epi_head_and_tail(df_cleaned)
 summary(df_cleaned)
+dim(df_cleaned)
 
 data_f <- df_cleaned
 rm(list = c('df_cleaned'))
+###
 ############
 
 
@@ -433,10 +581,10 @@ str(data_f)
 
 counts <- length(which(as.Date(data_f$FECHA_DEF) < as.Date(data_f$FECHA_INGRESO)))
 counts
-# 74 fo 2021 database
+# 74 fo 2021 database; 84 for 2021-2022
 counts <- length(which(as.Date(data_f$FECHA_DEF) < as.Date(data_f$FECHA_SINTOMAS)))
 counts
-# 0 fo 2021 database
+# 0 fo 2021 database; 1 for 2021-2022
 
 # Test and change to NAs in outcome/event variable (death):
 df_dates <- data_f
@@ -454,7 +602,7 @@ df_dates$FECHA_INGRESO <- as.Date(df_dates$FECHA_INGRESO)
 df_dates$FECHA_SINTOMAS <- as.Date(df_dates$FECHA_SINTOMAS)
 df_dates$FECHA_DEF <- as.Date(df_dates$FECHA_DEF)
 str(df_dates)
-
+dim(df_dates)
 
 # Dates with NAs (9999-99-99) stay as NAs but introduce NAs in outcome variable:
 # Add outcome death variable
@@ -488,6 +636,7 @@ df_dates$d_death <- if_else(!is.na(as.Date(df_dates$FECHA_DEF)) &
 summary(as.factor(df_dates$d_death))
 head(data_f$FECHA_DEF)
 head(df_dates$FECHA_DEF)
+dim(df_dates)
 ###
 
 
@@ -631,6 +780,7 @@ str(data_f)
 ############
 # Re-censor with new variable:
 # Done in script 4_surv_outcome.R
+# Because corresponds more to survival analysis setup than here (i.e. outcome definition depends on follow-up definition: end of study, 30-day mortality)
 ############
 
 

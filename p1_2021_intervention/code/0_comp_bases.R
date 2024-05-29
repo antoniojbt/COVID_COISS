@@ -2,6 +2,7 @@
 # COISS paper 1
 # L. Bonifaz
 # April 2024
+# Pick databases, brief exploration, join, save
 ############
 
 
@@ -40,10 +41,7 @@ setwd(project_loc)
 ############
 # Import libraries
 library(data.table)
-library(haven)
 library(episcout)
-library(ggthemes)
-library(cowplot)
 library(tidyverse)
 ############
 
