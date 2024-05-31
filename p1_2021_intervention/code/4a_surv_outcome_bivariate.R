@@ -2,6 +2,10 @@
 # COISS paper 1
 # L. Bonifaz
 # May 2024
+
+# Survival outcome analysis: KM plots and tables
+# Input is output from script 2_df_subset.R
+# Output are various descriptive plots and tables, no rdata or full dataset.
 ############
 
 
@@ -28,8 +32,7 @@ library(ggrepel)
 
 ############
 # Load a previous R session, data and objects:
-# infile <- '../data/processed/4_surv_outcome_COVID19MEXICO2021_COVID-only_COISS-only.rdata.gzip'
-infile <- '../data/processed/4_surv_outcome_COVID19MEXICO2021_2022_COVID-only_COISS-only.rdata.gzip'
+infile <- '../data/processed/2_df_subset_COVID19MEXICO_2021_2022_COVID-only_COISS-only.rdata.gzip'
 load(infile, verbose = TRUE)
 data_f <- data_f # just to get rid of RStudio warnings
 dim(data_f)
@@ -251,17 +254,17 @@ epi_write(file_object = cum_haz$data.survplot,
 ############
 ###
 # Use only d_intervention periods:
-summary(data_f$d_time_cuts)
-# intervention_points <- data_f$d_time_cuts
-# data_f$d_time_cuts <- factor(data_f$d_time_cuts)
-str(data_f$d_time_cuts)
-levels(data_f$d_time_cuts)
+summary(data_f$d_time_cuts_prev)
+# intervention_points <- data_f$d_time_cuts_prev
+# data_f$d_time_cuts_prev <- factor(data_f$d_time_cuts_prev)
+str(data_f$d_time_cuts_prev)
+levels(data_f$d_time_cuts_prev)
 
 # Levels with values of 0 will error:
 # Had this issue with 2021 database but once joined should be fine
-# data_f$d_time_cuts <- droplevels(data_f$d_time_cuts)
-# levels(data_f$d_time_cuts)
-# summary(data_f$d_time_cuts)
+# data_f$d_time_cuts_prev <- droplevels(data_f$d_time_cuts_prev)
+# levels(data_f$d_time_cuts_prev)
+# summary(data_f$d_time_cuts_prev)
 
 # Also:
 summary(data_f$d_intervention)
@@ -274,7 +277,7 @@ summary(data_f$d_intervention)
 
 ###
 # Desc stats by time cut-offs:
-counts_by_dates <- table(data_f$d_intervention, data_f$d_time_cuts)
+counts_by_dates <- table(data_f$d_intervention, data_f$d_time_cuts_prev)
 counts_by_dates
 i <- ''
 file_n <- 'counts_by_dates'
@@ -300,7 +303,7 @@ epi_write(file_object = props_by_dates,
 
 ###
 # Desc stats by time cut-offs, outcome and d_intervention:
-counts_by_dates_outcome <- table(data_f$d_intervention, data_f$d_time_cuts, data_f[[outcome_var]])
+counts_by_dates_outcome <- table(data_f$d_intervention, data_f$d_time_cuts_prev, data_f[[outcome_var]])
 str(counts_by_dates_outcome)
 
 i <- outcome_var
@@ -329,13 +332,13 @@ epi_write(file_object = as.data.frame(props_by_dates_outcome),
 
 ###
 # There shouldn't be NAs, result should be FALSE:
-any(is.na(data_f$d_time_cuts)) # is at least one value TRUE?
+any(is.na(data_f$d_time_cuts_prev)) # is at least one value TRUE?
 any(is.na(data_f$d_intervention))
 
 
-# Survival object by groups (d_intervention) and dates (d_time_cuts):
+# Survival object by groups (d_intervention) and dates (d_time_cuts_prev):
 surv_obj <- Surv(data_f[[time_var]], data_f[[outcome_var]])
-surv_fit_point <- survival::survfit(surv_obj ~ d_intervention + d_time_cuts, data = data_f)
+surv_fit_point <- survival::survfit(surv_obj ~ d_intervention + d_time_cuts_prev, data = data_f)
 
 str(surv_fit_point)
 surv_fit_point$strata
@@ -347,7 +350,7 @@ km_grps_dates <- ggsurvplot(surv_fit_point,
                             xlab = "Time (days)",
                             ylab = "Survival Probability",
                             title = "Kaplan-Meier Survival Curves by Intervention and Study Points",
-                            # facet.by = 'd_intervention', #"d_time_cuts",
+                            # facet.by = 'd_intervention', #"d_time_cuts_prev",
                             risk.table = TRUE,  # Add risk table
                             pval = TRUE,  # Add p-value
                             ylim = ylim
@@ -428,16 +431,16 @@ epi_write(file_object = km_grps_dates$data.survplot,
 ylim <- c(0.90, 1.00)
 
 # Subset data:
-pre_T0 <- data_f[data_f$d_time_cuts == 'pre-T0', ]
-T0 <- data_f[data_f$d_time_cuts == 'T0', ]
-gap_T1_T0 <- data_f[data_f$d_time_cuts == 'gap_T0_T1', ]
-T1 <- data_f[data_f$d_time_cuts == 'T1', ]
-gap_T1_T2 <- data_f[data_f$d_time_cuts == 'gap_T1_T2', ]
-T2 <- data_f[data_f$d_time_cuts == 'T2', ]
-post_T2 <- data_f[data_f$d_time_cuts == 'post-T2', ]
+pre_T0 <- data_f[data_f$d_time_cuts_prev == 'pre_T0', ]
+T0 <- data_f[data_f$d_time_cuts_prev == 'T0', ]
+gap_T1_T0 <- data_f[data_f$d_time_cuts_prev == 'gap_T0_T1', ]
+T1 <- data_f[data_f$d_time_cuts_prev == 'T1', ]
+gap_T1_T2 <- data_f[data_f$d_time_cuts_prev == 'gap_T1_T2', ]
+T2 <- data_f[data_f$d_time_cuts_prev == 'T2', ]
+post_T2 <- data_f[data_f$d_time_cuts_prev == 'post_T2', ]
 
 subsets_by_cut <- list(pre_T0, T0, gap_T1_T0, T1, gap_T1_T2, T2, post_T2)
-titles <- levels(data_f$d_time_cuts)
+titles <- levels(data_f$d_time_cuts_prev)
 lapply(subsets_by_cut, dim)
 
 # Set-up lists to hold loop info:
@@ -535,37 +538,38 @@ for (i in titles) {
 
 
 ############
-# The end:
-# Save objects, to eg .RData file:
-folder <- '../data/processed'
-script <- '4a_surv_outcome_bivariate'
-infile_prefix
-suffix <- 'rdata.gzip'
-outfile <- sprintf(fmt = '%s/%s_%s.%s', folder, script, infile_prefix, suffix)
-outfile
-
-# Check and remove objects that are not necessary to save:
-object_sizes <- sapply(ls(), function(x) object.size(get(x)))
-object_sizes <- as.matrix(rev(sort(object_sizes))[1:10])
-object_sizes
-objects_to_save <- (c('data_f', 'infile_prefix', 'outfile'))
-
-# Save:
-save(list = objects_to_save,
-     file = outfile,
-     compress = 'gzip'
-     )
-
-# Remove/clean up session:
-all_objects <- ls()
-all_objects
-rm_list <- which(!all_objects %in% objects_to_save)
-all_objects[rm_list]
-rm(list = all_objects[rm_list])
-ls() # Anything defined after all_objects and objects_to_save will still be here
-
-sessionInfo()
-# q()
-
-# Next: run the script for xxx
+# No changes to the rdata file loaded, no need to save again.
+# # The end:
+# # Save objects, to eg .RData file:
+# folder <- '../data/processed'
+# script <- '4a_surv_outcome_bivariate'
+# infile_prefix
+# suffix <- 'rdata.gzip'
+# outfile <- sprintf(fmt = '%s/%s_%s.%s', folder, script, infile_prefix, suffix)
+# outfile
+# 
+# # Check and remove objects that are not necessary to save:
+# object_sizes <- sapply(ls(), function(x) object.size(get(x)))
+# object_sizes <- as.matrix(rev(sort(object_sizes))[1:10])
+# object_sizes
+# objects_to_save <- (c('data_f', 'infile_prefix', 'outfile'))
+# 
+# # Save:
+# save(list = objects_to_save,
+#      file = outfile,
+#      compress = 'gzip'
+#      )
+# 
+# # Remove/clean up session:
+# all_objects <- ls()
+# all_objects
+# rm_list <- which(!all_objects %in% objects_to_save)
+# all_objects[rm_list]
+# rm(list = all_objects[rm_list])
+# ls() # Anything defined after all_objects and objects_to_save will still be here
+# 
+# sessionInfo()
+# # q()
+# 
+# # Next: run the script for xxx
 ############

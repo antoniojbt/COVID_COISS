@@ -92,13 +92,13 @@ summary(data_f$d_time_cuts_prev)
 # Could just cycle thorugh this but can't remember if code was misbehaving
 # Survival models were when in a loop, but moved those out
 # Keeping for now
-pre_T0 <- data_f[data_f$d_time_cuts_prev == 'pre-T0', ]
+pre_T0 <- data_f[data_f$d_time_cuts_prev == 'pre_T0', ]
 T0 <- data_f[data_f$d_time_cuts_prev == 'T0', ]
 gap_T1_T0 <- data_f[data_f$d_time_cuts_prev == 'gap_T1_T0', ]
 T1 <- data_f[data_f$d_time_cuts_prev == 'T1', ]
 gap_T1_T2 <- data_f[data_f$d_time_cuts_prev == 'gap_T1_T2', ]
 T2 <- data_f[data_f$d_time_cuts_prev == 'T2', ]
-post_T2 <- data_f[data_f$d_time_cuts_prev == 'post-T2', ]
+post_T2 <- data_f[data_f$d_time_cuts_prev == 'post_T2', ]
 
 summary(data_f$d_intervention)
 summary(factor(data_f$d_death))
@@ -191,7 +191,7 @@ df <- data_f_sub
 
 
 model_1 <- glm(model_formula,
-               data = df, # or e.g. pre-T0
+               data = df, # or e.g. pre_T0
                family = binomial
                )
 

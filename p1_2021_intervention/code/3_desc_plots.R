@@ -2,7 +2,11 @@
 # COISS paper 1
 # L. Bonifaz
 # April 2024
+# Descriptive plots and statistics. Should run on any of the databases.
+# Input is output from script 2_df_subset.R
+# Output are various descriptive plots and tables, no rdata or full dataset.
 ############
+
 
 ############
 project_loc <- '/Users/antoniob/Documents/work/science/projects/projects/ongoing/laura_bonifaz/COVID_COISS/p1_2021_intervention/results/'
@@ -23,8 +27,7 @@ library(tidyverse)
 
 ############
 # Load a previous R session, data and objects:
-# infile <- '../data/processed/2_df_subset_COVID19MEXICO2021_COVID-only_COISS-only.rdata.gzip'
-infile <- '../data/processed/2_df_subset_COVID19MEXICO2021_2022_COVID-only_COISS-only.rdata.gzip'
+infile <- '../data/processed/2_df_subset_COVID19MEXICO_2021_2022_COVID-only_COISS-only.rdata.gzip'
 load(infile, verbose = TRUE)
 data_f <- data_f # just to get rid of RStudio warnings
 dim(data_f)
@@ -331,10 +334,6 @@ data_f$FECHA_SINTOMAS
 data_f$FECHA_DEF
 typeof(data_f$FECHA_INGRESO)
 
-col_dates <- data_f %>% select(matches("^FECHA")) %>% colnames(.)
-col_dates
-
-# Loop:
 sum_dates_df <- data.frame('variable' = character(0),
                            'Min' = numeric(0),
                            'q25%' = numeric(0),
@@ -345,6 +344,17 @@ sum_dates_df <- data.frame('variable' = character(0),
                            stringsAsFactors = FALSE
                            )
 # sum_dates_df
+
+# exclude '_char' date cols:
+col_dates <- data_f %>% 
+  select(matches("^FECHA")) %>% 
+  select(-matches("_char$")) %>% 
+  colnames(.)
+
+col_dates
+lapply(data_f[, col_dates], typeof)
+lapply(data_f[, col_dates], str)
+
 
 for (i in col_dates) {
     sum_dates <- epi_stats_dates(data_f[[i]])
@@ -591,37 +601,38 @@ for (i in jumps) {
 
 
 ############
-# The end:
-# Save objects, to eg .RData file:
-folder <- '../data/processed'
-script <- '3_desc_plots'
-infile_prefix
-suffix <- 'rdata.gzip'
-outfile <- sprintf(fmt = '%s/%s_%s.%s', folder, script, infile_prefix, suffix)
-outfile
-
-# Check and remove objects that are not necessary to save:
-object_sizes <- sapply(ls(), function(x) object.size(get(x)))
-object_sizes <- as.matrix(rev(sort(object_sizes))[1:10])
-object_sizes
-objects_to_save <- (c('data_f', 'infile_prefix', 'outfile'))
-
-# Save:
-save(list = objects_to_save,
-     file = outfile,
-     compress = 'gzip'
-     )
-
-# Remove/clean up session:
-all_objects <- ls()
-all_objects
-rm_list <- which(!all_objects %in% objects_to_save)
-all_objects[rm_list]
-rm(list = all_objects[rm_list])
-ls() # Anything defined after all_objects and objects_to_save will still be here
-
-sessionInfo()
-# q()
-
-# Next: run the script for xxx
+# No changes to the rdata file loaded, no need to save again.
+# # The end:
+# # Save objects, to eg .RData file:
+# folder <- '../data/processed'
+# script <- '3_desc_plots'
+# infile_prefix
+# suffix <- 'rdata.gzip'
+# outfile <- sprintf(fmt = '%s/%s_%s.%s', folder, script, infile_prefix, suffix)
+# outfile
+# 
+# # Check and remove objects that are not necessary to save:
+# object_sizes <- sapply(ls(), function(x) object.size(get(x)))
+# object_sizes <- as.matrix(rev(sort(object_sizes))[1:10])
+# object_sizes
+# objects_to_save <- (c('data_f', 'infile_prefix', 'outfile'))
+# 
+# # Save:
+# save(list = objects_to_save,
+#      file = outfile,
+#      compress = 'gzip'
+#      )
+# 
+# # Remove/clean up session:
+# all_objects <- ls()
+# all_objects
+# rm_list <- which(!all_objects %in% objects_to_save)
+# all_objects[rm_list]
+# rm(list = all_objects[rm_list])
+# ls() # Anything defined after all_objects and objects_to_save will still be here
+# 
+# sessionInfo()
+# # q()
+# 
+# # Next: run the script for xxx
 ############

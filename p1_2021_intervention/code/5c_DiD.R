@@ -115,7 +115,7 @@ summary(df$d_time_cuts_prev) # only T0 and T1 should have >0
 
 
 model_1 <- glm(model_formula,
-               data = df, # or e.g. pre-T0
+               data = df, # or e.g. pre_T0
                family = binomial
                )
 
@@ -152,7 +152,7 @@ summary(df$d_time_cuts_prev) # only T0 and T1 should have >0
 
 # Simple DiD:
 model_2 <- glm(model_formula,
-               data = df, # or e.g. pre-T0
+               data = df, # or e.g. pre_T0
                family = binomial
                )
 # Summarize the model

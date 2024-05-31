@@ -4,6 +4,47 @@
 # April 2024
 
 # This script is specific to COISS vs non-COISS 2021-2022 COVID positive analysis
+# Input is output from script 1_setup.R
+# Output is tsv and rdata files for descriptive stats and further analysis
+############
+
+
+############
+# New variables
+# Time cuts for admission
+# Time cuts for outcome
+# Time cuts for Case Fatality Rate:
+# Denominator: Deaths from the disease during the period
+# Numerator: Diagnosed cases treated during the period, deaths during the period and ongoing treatments from previous periods
+
+# For CFR, period prev, etc.:
+  # pop who suffers event during period = FECHA_DEF during period : covers admitted before and during who suffer event
+  # pop at risk during period =   FECHA_INGRESO during period or FECHA_DEF during period: covers alive and events during period
+                            #   + FECHA_INGRESO before period but suffer event after period : covers admitted before who remain alive through period and need to be censored
+                            #   + FECHA_INGRESO before period who do not suffer event, remain alive during period and are discharged alive at any point should be included but CANNOT as there is no variable (or combination for this; i.e. no discharge variable other than death date)
+                            #   This means numbers are overestimated as missing counts for the denominator when studying specific dates. For whole study, follow-up is long, so not an issue as highly unlikely to remain in hospital and alive for many months for COVID19.
+
+# For CFR, prevalence/period inclusion, period/time cuts are not continuous/dependent, i.e. each window analysis is independent and will thus include admissions from previous windows if those admissions died or remained alive during current period
+# so that DiD can be performed on e.g. T1 accounting for T0, and T2 accounting for T0
+
+# derived variables:
+  # "d_death" = event occurred up until maximum follow-up time, FECHA_ACTUALIZACION; integer
+  # "d_days_to_death" = days from admission to event; FECHA_INGRESO to FECHA_DEF; numeric
+  # "d_time_cuts_INGRESO" = time cuts based on admission date; factor ordered
+  # "d_time_cuts_DEF" = time cuts based on outcome date; factor ordered
+  # "d_time_cuts_prev" = time cuts based on period, including admissions and events; factor ordered
+  # "d_intervention" = COISS intervention; integer
+
+# For regressions:
+  # subset based on d_time_cuts_prev, which will be pop at risk for period
+  # outcome var will then be (as integers):
+    # "d_pre_T0_outcome"
+    # "d_T0_outcome"
+    # "d_gap_T0_T1_outcome"
+    # "d_T1_outcome"
+    # "d_gap_T1_T2_outcome"
+    # "d_T2_outcome"
+    # "d_post_T2_outcome"
 ############
 
 
@@ -78,12 +119,6 @@ dir()
 
 
 ############
-# New variables
-# Time cuts for admission
-# Time cuts for outcome
-# Time cuts for point prevalence
-
-# ###
 # Analysis dates, based on epidemic waves:
 # T0_start	30 July 2021
 # T0_end	02 August 2021
@@ -104,9 +139,6 @@ T2_end <- '2022-02-28'
 # Time cuts needed are based separately on:
 # FECHA_INGRESO
 # FECHA_DEF
-
-# so that DiD can be performed on e.g. T1 accounting for T0, and T2 accounting for T0
-###
 ############
 
 
@@ -118,6 +150,8 @@ df_recode <- data_f
 
 length(which(as.Date(df_recode$FECHA_INGRESO) >= as.Date(T0_start)))
 length(which(df_recode$FECHA_INGRESO < T0_start))
+any(is.na(df_recode$FECHA_INGRESO))
+# There are no NA's for 2021 and 2022 databases
 
 summary(df_recode$FECHA_INGRESO)
 summary(df_recode$FECHA_INGRESO_char)
@@ -128,31 +162,32 @@ summary(df_recode$FECHA_DEF)
 summary(df_recode$FECHA_ACTUALIZACION)
 summary(df_recode$FECHA_SINTOMAS)
 
-df_recode$d_time_cuts_INGRESO <- ifelse(df_recode$FECHA_INGRESO >= T0_start & df_recode$FECHA_INGRESO <= T0_end, 'T0',
-                           ifelse(df_recode$FECHA_INGRESO >= T1_start & df_recode$FECHA_INGRESO <= T1_end, 'T1',
-                                  ifelse(df_recode$FECHA_INGRESO >= T2_start & df_recode$FECHA_INGRESO <= T2_end, 'T2',
-                                         ifelse(df_recode$FECHA_INGRESO < T0_start, 'pre-T0',
-                                                ifelse(df_recode$FECHA_INGRESO > T0_end & df_recode$FECHA_INGRESO < T1_start, 'gap_T0_T1',
-                                                       ifelse(df_recode$FECHA_INGRESO > T1_end & df_recode$FECHA_INGRESO < T2_start, 'gap_T1_T2',
-                                                              ifelse(df_recode$FECHA_INGRESO > T2_end, 'post-T2',
-                                                                     'check'
-                                                                     )))))))
+df_recode$d_time_cuts_INGRESO <- 
+                      ifelse(df_recode$FECHA_INGRESO >= T0_start & df_recode$FECHA_INGRESO <= T0_end, 'T0',
+                          ifelse(df_recode$FECHA_INGRESO >= T1_start & df_recode$FECHA_INGRESO <= T1_end, 'T1',
+                              ifelse(df_recode$FECHA_INGRESO >= T2_start & df_recode$FECHA_INGRESO <= T2_end, 'T2',
+                                  ifelse(df_recode$FECHA_INGRESO < T0_start, 'pre_T0',
+                                      ifelse(df_recode$FECHA_INGRESO > T0_end & df_recode$FECHA_INGRESO < T1_start, 'gap_T0_T1',
+                                          ifelse(df_recode$FECHA_INGRESO > T1_end & df_recode$FECHA_INGRESO < T2_start, 'gap_T1_T2',
+                                              ifelse(df_recode$FECHA_INGRESO > T2_end, 'post_T2',
+                                                     'check'
+                                                     )))))))
 
 dim(df_recode)
 summary(factor(df_recode$d_time_cuts_INGRESO))
 df_recode$d_time_cuts_INGRESO
 df_recode$d_time_cuts_INGRESO <- factor(df_recode$d_time_cuts_INGRESO,
-                           levels = c('pre-T0', 'T0',
+                           levels = c('pre_T0', 'T0',
                                       'gap_T0_T1', 'T1',
                                       'gap_T1_T2', 'T2',
-                                      'post-T2'),
+                                      'post_T2'),
                            # labels = levels,
                            ordered = TRUE
                            )
 summary(df_recode$d_time_cuts_INGRESO)
 
 # Looks OK:
-epi_head_and_tail(df_recode[df_recode$d_time_cuts_INGRESO == 'pre-T0', ], cols = 6)
+epi_head_and_tail(df_recode[df_recode$d_time_cuts_INGRESO == 'pre_T0', ], cols = 6)
 epi_head_and_tail(df_recode[df_recode$d_time_cuts_INGRESO == 'T0', ], cols = 6)
 epi_head_and_tail(df_recode[df_recode$d_time_cuts_INGRESO == 'T1', ], cols = 6)
 
@@ -179,8 +214,6 @@ str(data_f)
 ############
 
 
-# TO DO: continue here, re-run, clean up, etc.
-# Maybe just keep true_NA as character
 ############
 ###
 # The following is based on FECHA_DEF:
@@ -205,7 +238,7 @@ table(df_recode$FECHA_DEF_char)
 # Used as.char for handling 9999-99-99 codes but same issue
 # Tried several things but best to handle true NA's separately, in different statements
 
-df_recode$d_time_cuts_DEF <- NULL
+# df_recode$d_time_cuts_DEF <- NULL
 # Apply the recoding logic using dplyr and case_when in separate statements so that clashes don't occur with NA's
 df_recode <- df_recode %>%
   mutate(
@@ -224,13 +257,13 @@ df_recode <- df_recode %>%
     d_time_cuts_DEF = case_when(
       !is.na(d_time_cuts_DEF) ~ d_time_cuts_DEF,  # Retain 'censored' and true NA's
       # is.na(d_death) ~ NA_character_,  # Handle true NAs
-      is.na(d_time_cuts_DEF) & FECHA_DEF < T0_start ~ 'pre-T0',
+      is.na(d_time_cuts_DEF) & FECHA_DEF < T0_start ~ 'pre_T0',
       is.na(d_time_cuts_DEF) & FECHA_DEF >= T0_start & FECHA_DEF <= T0_end ~ 'T0',
       is.na(d_time_cuts_DEF) & FECHA_DEF > T0_end & FECHA_DEF < T1_start ~ 'gap_T0_T1',
       is.na(d_time_cuts_DEF) & FECHA_DEF >= T1_start & FECHA_DEF <= T1_end ~ 'T1',
       is.na(d_time_cuts_DEF) & FECHA_DEF > T1_end & FECHA_DEF < T2_start ~ 'gap_T1_T2',
       is.na(d_time_cuts_DEF) & FECHA_DEF >= T2_start & FECHA_DEF <= T2_end ~ 'T2',
-      is.na(d_time_cuts_DEF) & FECHA_DEF > T2_end ~ 'post-T2',
+      is.na(d_time_cuts_DEF) & FECHA_DEF > T2_end ~ 'post_T2',
       TRUE ~ 'check'  # Default case if none of the above match
     )
   )
@@ -238,67 +271,68 @@ df_recode <- df_recode %>%
 dim(df_recode)
 dim(data_f)
 summary(factor(df_recode$d_time_cuts_DEF))
-epi_head_and_tail(df_recode[df_recode$d_time_cuts_DEF == 'pre-T0', ], cols = 6)
-# View(tail(df_recode[df_recode$d_time_cuts_DEF == 'pre-T0', ], n = 100))
-subset_pre_T0 <- df_recode[df_recode$d_time_cuts_DEF == 'pre-T0', ]
-summary(factor(subset_pre_T0$d_time_cuts_DEF)) # should only be 'pre-T0'
+epi_head_and_tail(df_recode[df_recode$d_time_cuts_DEF == 'pre_T0', ], cols = 6)
+# View(tail(df_recode[df_recode$d_time_cuts_DEF == 'pre_T0', ], n = 100))
+subset_pre_T0 <- df_recode[df_recode$d_time_cuts_DEF == 'pre_T0', ]
+summary(factor(subset_pre_T0$d_time_cuts_DEF)) # should only be 'pre_T0'
 
 # Check if there are rows where all points are NA:
 subset_pre_T0[rowSums(is.na(subset_pre_T0)) == ncol(subset_pre_T0), ] # should be empty
 # Fine up to here
 ###
-############
 
 
-############
 ###
-# TO DO: recheck this
-# Return 'True_NAs' placeholder back to actual NA:
+# Just keep true_NA as character
+# Returning 'True_NAs' placeholder back to actual NA caused havoc with the recoding, introducing rows with NA's across when subsetting.
 # True NA's are from non-sensical dates coded in original (max follow-up) outcome var (d_death)
 # This and other tries re-introduce rows of NA's. They seem to be additional rows that couldn't be handled though.
 # This appears to solely be when subsetting and not in the actual dataframe.
 # Check separate script trying to debug this 'subset_NA_rows_issue.R'
 
-df_recode2 <- df_recode %>%
-  mutate(
-    d_time_cuts_DEF = case_when(
-        d_time_cuts_DEF == 'true_NA' ~ NA_character_, # Handle true NAs
-        TRUE ~ d_time_cuts_DEF  # Retain all other rows
-    )
-  )
+# df_recode2 <- df_recode %>%
+#   mutate(
+#     d_time_cuts_DEF = case_when(
+#         d_time_cuts_DEF == 'true_NA' ~ NA_character_, # Handle true NAs
+#         TRUE ~ d_time_cuts_DEF  # Retain all other rows
+#     )
+#   )
+# 
+# nrow(df_recode2) == nrow(data_f)
+# summary(factor(df_recode2$d_time_cuts_DEF))
+# 
+# # Subsetting introduces NA's but these aren't present in full dataset:
+# epi_head_and_tail(df_recode2[df_recode2$d_time_cuts_DEF == 'pre_T0', ], cols = 6)
+# # View(tail(df_recode2[df_recode2$d_time_cuts_DEF == 'pre_T0', ], n = 100))
+# subset_pre_T0 <- df_recode2[df_recode2$d_time_cuts_DEF == 'pre_T0', ]
+# summary(factor(subset_pre_T0$d_time_cuts_DEF)) # should only be 'pre_T0'
+# # Check if there are rows where all points are NA:
+# subset_pre_T0[rowSums(is.na(subset_pre_T0)) == ncol(subset_pre_T0), ] # should be empty but isn't
+# 
+# # Not OK if subsetting when actual NAs are used:
+# epi_head_and_tail(df_recode2[df_recode2$d_time_cuts_DEF == 'pre_T0', ], cols = 6)
+# epi_head_and_tail(df_recode2[df_recode2$d_time_cuts_DEF == 'T0', ], cols = 6)
+# epi_head_and_tail(df_recode2[df_recode2$d_time_cuts_DEF == 'T1', ], cols = 6)
 
-nrow(df_recode2) == nrow(data_f)
-summary(factor(df_recode2$d_time_cuts_DEF))
+# But OK if string is used:
+epi_head_and_tail(df_recode[df_recode$d_time_cuts_DEF == 'pre_T0', ], cols = 6)
+epi_head_and_tail(df_recode[df_recode$d_time_cuts_DEF == 'T0', ], cols = 6)
+epi_head_and_tail(df_recode[df_recode$d_time_cuts_DEF == 'T1', ], cols = 6)
 
-# Subsetting introduces NA's but these aren't present in full dataset:
-epi_head_and_tail(df_recode2[df_recode2$d_time_cuts_DEF == 'pre-T0', ], cols = 6)
-# View(tail(df_recode2[df_recode2$d_time_cuts_DEF == 'pre-T0', ], n = 100))
-subset_pre_T0 <- df_recode2[df_recode2$d_time_cuts_DEF == 'pre-T0', ]
-summary(factor(subset_pre_T0$d_time_cuts_DEF)) # should only be 'pre-T0'
-# Check if there are rows where all points are NA:
-subset_pre_T0[rowSums(is.na(subset_pre_T0)) == ncol(subset_pre_T0), ] # should be empty but isn't
-
-# Not OK:
-epi_head_and_tail(df_recode2[df_recode2$d_time_cuts_DEF == 'pre-T0', ], cols = 6)
-epi_head_and_tail(df_recode2[df_recode2$d_time_cuts_DEF == 'T0', ], cols = 6)
-epi_head_and_tail(df_recode2[df_recode2$d_time_cuts_DEF == 'T1', ], cols = 6)
-
-
-df_recode2$d_time_cuts_DEF <- factor(df_recode2$d_time_cuts_DEF,
-                                 levels = c('pre-T0', 'T0',
+names(summary(factor(df_recode$d_time_cuts_DEF)))
+df_recode$d_time_cuts_DEF <- factor(df_recode$d_time_cuts_DEF,
+                                 levels = c('pre_T0', 'T0',
                                             'gap_T0_T1', 'T1',
                                             'gap_T1_T2', 'T2',
-                                            'post-T2', 'censored'),
+                                            'post_T2', 'censored',
+                                            "true_NA"),
                                  ordered = TRUE
                                  )
 
-summary(df_recode2$d_time_cuts_DEF)
-summary(df_recode2$d_time_cuts_INGRESO)
+summary(df_recode$d_time_cuts_DEF)
+summary(df_recode$d_time_cuts_INGRESO) # no NA's for 2021 and 2022 databases
 ###
-############
 
-
-############
 ###
 # Plot:
 i <- 'd_time_cuts_DEF'
@@ -314,8 +348,8 @@ my_plot_grid <- epi_plots_to_grid(plot_list = plot_list)
 epi_plot_cow_save(file_name = outfile, plot_grid = my_plot_grid)
 
 # Clean up a bit:
-data_f <- df_recode2
-rm(list = c('df_recode', 'df_recode2'))
+data_f <- df_recode
+rm(list = c('df_recode'))
 str(data_f)
 ###
 ############
@@ -327,9 +361,7 @@ str(data_f)
 # Outcome death within each time-cut, needed for DiD analysis (as transversal, not long. as with days to death)
 # Should equal outcome var (e.g. max follow-up with FECHA_ACTUALIZACION, or 30 day mortality from admission) plus d_time_cuts_DEF which has mark for death at each time period
 # Should be equal to point prevalence, where all events during the period over whole population admitted (ie prior admissions still there plus new admission for the period)
-# So:
-# FECHA_DEF for the specific period is event occurred
-# FECHA_INGRESO for the specific period is population at risk
+# See definitions above for pop at risk
 
 df_recode <- data_f
 
@@ -337,38 +369,66 @@ colnames(df_recode)
 summary(df_recode$d_time_cuts_INGRESO)
 summary(df_recode$d_time_cuts_DEF)
 
-# New var for prevalence during period, either FECHA_DEF or FECHA_INGRESO
 # df_recode$d_time_cuts_prev <- NULL
-df_recode$d_time_cuts_prev <- ifelse(is.na(df_recode$d_death), NA,
-    ifelse(df_recode$d_time_cuts_INGRESO == 'pre-T0' | df_recode$d_time_cuts_DEF == 'pre-T0', 'pre-T0',
-        ifelse(df_recode$d_time_cuts_INGRESO == 'T0' | df_recode$d_time_cuts_DEF == 'T0', 'T0',
-            ifelse(df_recode$d_time_cuts_INGRESO == 'gap_T0_T1' | df_recode$d_time_cuts_DEF == 'gap_T0_T1', 'gap_T0_T1',
-                ifelse(df_recode$d_time_cuts_INGRESO == 'T1' | df_recode$d_time_cuts_DEF == 'T1', 'T1',
-                    ifelse(df_recode$d_time_cuts_INGRESO == 'gap_T1_T2' | df_recode$d_time_cuts_DEF == 'gap_T1_T2', 'gap_T1_T2',
-                        ifelse(df_recode$d_time_cuts_INGRESO == 'T2' | df_recode$d_time_cuts_DEF == 'T2', 'T2',
-                            ifelse(df_recode$d_time_cuts_INGRESO == 'post-T2' | df_recode$d_time_cuts_DEF == 'post-T2', 'post-T2',
-                                   'check'
-                                   ))))))))
+df_recode$d_time_cuts_prev <- character(length = nrow(df_recode))
+df_recode$d_time_cuts_prev <- 
+  ifelse(is.na(as.character(df_recode$d_death)), 'true_NA', # if using e.g. NA_character_ NA rows get introduced when subsetting
+    # FECHA_INGRESO during period or FECHA_DEF during period:
+  ifelse((df_recode$d_time_cuts_INGRESO == 'pre_T0' | df_recode$d_time_cuts_DEF == 'pre_T0'),
+    # There is no pre-pre_T0, so no prior admissions to this point
+    'pre_T0',
+    # FECHA_INGRESO during period or FECHA_DEF during period:
+  ifelse((df_recode$d_time_cuts_INGRESO == 'T0' | df_recode$d_time_cuts_DEF == 'T0') |
+    # FECHA_INGRESO before period but suffer event after period:
+         (df_recode$FECHA_INGRESO < T0_start & df_recode$FECHA_DEF > T0_end),
+    'T0',
+    # FECHA_INGRESO during period or FECHA_DEF during period:
+  ifelse((df_recode$d_time_cuts_INGRESO == 'gap_T0_T1' | df_recode$d_time_cuts_DEF == 'gap_T0_T1') |
+    # FECHA_INGRESO before period but suffer event after period:
+         (df_recode$FECHA_INGRESO < T0_end & df_recode$FECHA_DEF > T1_start),
+    'gap_T0_T1',
+    # FECHA_INGRESO during period or FECHA_DEF during period:
+  ifelse((df_recode$d_time_cuts_INGRESO == 'T1' | df_recode$d_time_cuts_DEF == 'T1') |
+    # FECHA_INGRESO before period but suffer event after period:
+         (df_recode$FECHA_INGRESO < T1_start & df_recode$FECHA_DEF > T1_end),
+    'T1',
+    # FECHA_INGRESO during period or FECHA_DEF during period:
+    ifelse((df_recode$d_time_cuts_INGRESO == 'gap_T1_T2' | df_recode$d_time_cuts_DEF == 'gap_T1_T2') |
+    # FECHA_INGRESO before period but suffer event after period:
+           (df_recode$FECHA_INGRESO < T1_end & df_recode$FECHA_DEF > T2_start),
+           'gap_T1_T2',
+    # FECHA_INGRESO during period or FECHA_DEF during period:
+    ifelse((df_recode$d_time_cuts_INGRESO == 'T2' | df_recode$d_time_cuts_DEF == 'T2') |
+    # FECHA_INGRESO before period but suffer event after period:
+           (df_recode$FECHA_INGRESO < T2_start & df_recode$FECHA_DEF > T2_end),
+           'T2',
+    # FECHA_INGRESO during period or FECHA_DEF during period:
+    ifelse((df_recode$d_time_cuts_INGRESO == 'post_T2' | df_recode$d_time_cuts_DEF == 'post_T2'),
+    # There is no post-post_T2, so no events after this point
+           'post_T2',
+    # Everything else (should be none):
+           'check'
+           ))))))))
 
 dim(df_recode)
+dim(data_f)
 summary(factor(df_recode$d_time_cuts_prev))
+names(summary(factor(df_recode$d_time_cuts_prev)))
 
 # Var as factor:
 df_recode$d_time_cuts_prev <- factor(df_recode$d_time_cuts_prev,
-                                   levels = c('pre-T0', 'T0',
+                                   levels = c('pre_T0', 'T0',
                                             'gap_T0_T1', 'T1',
                                             'gap_T1_T2', 'T2',
-                                            'post-T2'),
+                                            'post_T2', 'true_NA'),
                                  ordered = TRUE
                                  )
 summary(df_recode$d_time_cuts_prev)
 
-# TO DO: same issue as above when subsetting only:
-# Not OK:
-epi_head_and_tail(df_recode[df_recode$d_time_cuts_prev == 'pre-T0', ], cols = 6)
+# Same issue as above when subsetting only with NA's, so left as character
+epi_head_and_tail(df_recode[df_recode$d_time_cuts_prev == 'pre_T0', ], cols = 6)
 epi_head_and_tail(df_recode[df_recode$d_time_cuts_prev == 'T0', ], cols = 6)
 epi_head_and_tail(df_recode[df_recode$d_time_cuts_prev == 'T1', ], cols = 6)
-
 
 # Plot:
 i <- 'd_time_cuts_prev'
@@ -394,164 +454,69 @@ str(data_f)
 
 ############
 ###
-# Sanity check as issues with NAs rows introduced:
+# Add outcome variables for each period
+# This is based on FECHA_DEF not (!) FECHA_INGRESO for each period
+# so if e.g. df_recode$d_time_cuts_DEF == 'pre_T0' death occurred in that period, if 'censored' then was alive at that period.
+# Had same issues as before, ifelse() really can't handle NA's or statements coming from different column types
+
 df_recode <- data_f
 
 colnames(df_recode)
+deaths_periods_list <- c("d_pre_T0_outcome", "d_T0_outcome",
+                         "d_gap_T0_T1_outcome", "d_T1_outcome",
+                         "d_gap_T1_T2_outcome", "d_T2_outcome",
+                         "d_post_T2_outcome")
 
-cols_to_check <- c('ID_REGISTRO',
-                   "d_death",
-                   "d_days_to_death",
-                   "d_time_cuts_INGRESO",
-                   "d_time_cuts_DEF",
-                   "d_time_cuts_prev"
-                   )
+period_subsets <- levels(df_recode$d_time_cuts_DEF)
+period_subsets <- period_subsets[1:7] # remove extras
+period_subsets
 
-dim(data_f)
-dim(df_recode)
-summary(df_recode[, cols_to_check])
-epi_head_and_tail(df_recode[, cols_to_check], cols = 6)
-# Looks fine
+# Create a var for each period:
+# i <- 'd_pre_T0_outcome'
+count <- 0
+for (i in deaths_periods_list) {
+  print(i)
+  count <- count + 1
+  df_recode[[i]] <- character(length = nrow(df_recode))
+  df_recode[[i]] <- ifelse(is.na(as.character(df_recode$d_death)), 'NA', # true NAs
+                                ifelse(as.character(df_recode$d_time_cuts_DEF) == as.character(period_subsets[[count]]), '1',
+                                       '0'
+                                       ))
+  # df_recode[[i]] <- as.integer(df_recode[[i]]) # This introduces rows with NAs when subsetting
+  print(typeof(df_recode[[i]]))
+  print(summary(as.integer(df_recode[[i]])))
+  print(summary(as.factor(df_recode[[i]])))
+  print(epi_head_and_tail(df_recode[df_recode[[i]] == 1,
+                              c('ID_REGISTRO', 'd_time_cuts_INGRESO',
+                                'd_time_cuts_DEF', 'd_pre_T0_outcome')],
+                    cols = 4
+                    ))
 
-lapply(cols_to_check, function(x) head(df_recode[, x]))
-lapply(cols_to_check, function(x) tail(df_recode[, x]))
-# Fine up to here too
+  }
 
-
-# But not when subsetting:
-# Looks OK:
-epi_head_and_tail(df_recode[df_recode$d_time_cuts_INGRESO == 'pre-T0', cols_to_check], cols = 6)
-epi_head_and_tail(df_recode[df_recode$d_time_cuts_INGRESO == 'T0', cols_to_check], cols = 6)
-epi_head_and_tail(df_recode[df_recode$d_time_cuts_INGRESO == 'T1', cols_to_check], cols = 6)
-
-# Not OK:
-epi_head_and_tail(df_recode[df_recode$d_time_cuts_DEF == 'pre-T0', cols_to_check], cols = 6)
-epi_head_and_tail(df_recode[df_recode$d_time_cuts_DEF == 'T0', cols_to_check], cols = 6)
-epi_head_and_tail(df_recode[df_recode$d_time_cuts_DEF == 'T1', cols_to_check], cols = 6)
-
-
-# Not OK:
-epi_head_and_tail(df_recode[df_recode$d_time_cuts_prev == 'pre-T0', cols_to_check], cols = 6)
-epi_head_and_tail(df_recode[df_recode$d_time_cuts_prev == 'T0', cols_to_check], cols = 6)
-epi_head_and_tail(df_recode[df_recode$d_time_cuts_prev == 'T1', cols_to_check], cols = 6)
-
-
-# TO DO: needs checking, same issue as above:
-df_recode[df_recode$d_time_cuts_DEF == 'pre-T0', ]
-tail(df_recode[df_recode$d_time_cuts_DEF == 'pre-T0', ])
-
-tail(df_recode[df_recode$d_time_cuts_DEF == 'pre-T0', ], n = 10)
-# Last 7 rows are NAs
-tail(df_recode[df_recode$d_time_cuts_DEF == 'T0', ], n = 10)
-tail(df_recode[df_recode$d_time_cuts_DEF == 'T1', ], n = 10)
-# Different IDs for those without NAs but last 7 rows in each period are NAs
-
-# TO DO: check
-# for (i in levels(df_recode$d_time_cuts_prev)) {
-#     print(sprintf('Period: %s', i))
-#     # 
-#     print("everybody for the period:")
-#     prev_cut <- nrow(df_recode[df_recode$d_time_cuts_prev == i, ])
-#     print(prev_cut)
-#     cat('\n')
-#     # 
-#     print("everybody who died in the period:")
-#     outcome_Y <- nrow(df_recode[df_recode$d_time_cuts_DEF == i, ])
-#     print(outcome_Y)
-#     cat('\n')
-#     # 
-#     print("everybody who was alive in the period:")
-#     outcome_N <- nrow(df_recode[df_recode$d_time_cuts_DEF == 'censored' &
-#                                     df_recode$d_time_cuts_prev == i, ]
-#                       )
-#     print(outcome_N)
-#     cat('\n')
-#     # This should match:
-#     print(prev_cut == outcome_Y + outcome_N)
-#     
-#     # 
-#     print("everybody who died in the period should match with overall outcome (end of study follow-up):")
-#     print(nrow(df_recode[df_recode$d_time_cuts_DEF == i & df_recode$d_death == 1, ]))
-#     cat('\n')
-#     # 
-#     print("but should be different to those who were still alive at the particular period:")
-#     print(nrow(df_recode[df_recode$d_time_cuts_DEF == 'censored' & df_recode$d_death == 0, ]))
-#     cat('\n')
-#     cat('\n')
-# }
-# 
-# 
-# 
-# 
-# summary(df_recode[df_recode$d_time_cuts_DEF == 'T0', ])
-# dim(df_recode[df_recode$d_time_cuts_DEF == 'T0', ]) # equals number of people who died in this period
-# dim(df_recode[df_recode$d_time_cuts_INGRESO == 'T0', ]) # equals number of people at risk (survivors and non-survivors) in this period
-# 
-# epi_head_and_tail(df_recode[, c('d_time_cuts_INGRESO','d_time_cuts_DEF')], cols = 2)
-# summary(df_recode[, c('d_time_cuts_INGRESO','d_time_cuts_DEF')])
-# table(df_recode$d_time_cuts_INGRESO, df_recode$d_time_cuts_DEF)
-# # d_time_cuts_DEF includes those who were admitted before e.g. T0 start date as it's those who died during specified period.
-# 
-# # but need an outcome variable for each period for regression with 0's and 1's:
-###
-############
-
-
-############
-###
-# Add outcome variables for each period
-# This is based on FECHA_DEF not (!) FECHA_INGRESO for each period
-# so if e.g. df_recode$d_time_cuts_DEF == 'pre-T0' death occurred in that period, if 'censored' then was alive at that period.
-levels(df_recode$d_time_cuts_DEF)
-
-df_recode$d_pre_T0_DEF <- ifelse(is.na(df_recode$d_death), NA, # true NAs
-                         ifelse(df_recode$d_time_cuts_DEF == 'pre-T0', 1,
-                                0
-                                ))
-df_recode$d_T0_DEF <- ifelse(is.na(df_recode$d_death), NA, # true NAs
-                         ifelse(df_recode$d_time_cuts_DEF == 'T0', 1,
-                                0
-                                ))
-df_recode$d_gap_T0_T1_DEF <- ifelse(is.na(df_recode$d_death), NA, # true NAs
-                         ifelse(df_recode$d_time_cuts_DEF == 'gap_T0_T1', 1,
-                                0
-                                ))
-df_recode$d_T1_DEF <- ifelse(is.na(df_recode$d_death), NA, # true NAs
-                         ifelse(df_recode$d_time_cuts_DEF == 'T1', 1,
-                                0
-                                ))
-df_recode$d_gap_T1_T2_DEF <- ifelse(is.na(df_recode$d_death), NA, # true NAs
-                         ifelse(df_recode$d_time_cuts_DEF == 'gap_T1_T2', 1,
-                                0
-                                ))
-df_recode$d_T2_DEF <- ifelse(is.na(df_recode$d_death), NA, # true NAs
-                         ifelse(df_recode$d_time_cuts_DEF == 'T2', 1,
-                                0
-                                ))
-df_recode$d_post_T2_DEF <- ifelse(is.na(df_recode$d_death), NA, # true NAs
-                         ifelse(df_recode$d_time_cuts_DEF == 'post-T2', 1,
-                                0
-                                ))
-
-colnames(df_recode)
-deaths_periods_list <- c("d_pre_T0_DEF", "d_T0_DEF",
-                         "d_gap_T0_T1_DEF", "d_T1_DEF",
-                         "d_gap_T1_T2_DEF", "d_T2_DEF",
-                         "d_post_T2_DEF")
 lapply(df_recode[, deaths_periods_list], function(x) summary(as.factor(x)))
 dim(df_recode)
 
+# Not all time cuts get NAs introduced, pre_T0 did, check:
+summary(df_recode[, c('ID_REGISTRO', 'd_time_cuts_INGRESO','d_time_cuts_DEF', 'd_pre_T0_outcome')])
+epi_head_and_tail(df_recode[, c('ID_REGISTRO', 'd_time_cuts_INGRESO','d_time_cuts_DEF', 'd_pre_T0_outcome')], cols = 4)
+epi_head_and_tail(df_recode[df_recode$d_pre_T0_outcome == 1, c('ID_REGISTRO', 'd_time_cuts_INGRESO','d_time_cuts_DEF', 'd_pre_T0_outcome')], cols = 4)
 
-summary(df_recode[, c('d_time_cuts_INGRESO','d_time_cuts_DEF', 'd_T0_DEF')])
-epi_head_and_tail(df_recode[, c('d_time_cuts_INGRESO','d_time_cuts_DEF', 'd_T0_DEF')], cols = 3)
-epi_head_and_tail(df_recode[df_recode$d_T0_DEF == 1, c('d_time_cuts_INGRESO','d_time_cuts_DEF', 'd_T0_DEF')], cols = 3)
+# Check:
+pre_T0 <- df_recode[df_recode$d_time_cuts_prev == 'pre_T0', ]
+epi_head_and_tail(pre_T0) # looks OK
+summary(as.factor(pre_T0$d_pre_T0_outcome)) # very few NA's in 2021 and 2022 so may not appear in this subset
+pre_T0$d_pre_T0_outcome <- as.integer(pre_T0$d_pre_T0_outcome)
+summary(pre_T0$d_pre_T0_outcome)
+epi_head_and_tail(df_recode[df_recode$d_pre_T0_outcome == 1, ]) # looks OK
+epi_head_and_tail(df_recode[df_recode$d_pre_T0_outcome == 0, ]) # looks OK
 
-# So:
-colnames(df_recode)
-df_recode$d_time_cuts_prev # for point prevalence, has FECHA_INGRESO and DEF coded
-df_recode$d_time_cuts_INGRESO # admitted at particular time period
-df_recode$d_time_cuts_DEF # suffered event at particular time period; coded as factor
-df_recode$d_T1_DEF # event for this period coded as 0's and 1's; i.e. 1's for period, 0's everything else
+# But:
+# # df_recode$d_pre_T0_outcome <- as.integer(df_recode$d_pre_T0_outcome) #  introduces rows with NAs when subsetting
+# epi_head_and_tail(df_recode[, c('ID_REGISTRO', 'd_time_cuts_INGRESO','d_time_cuts_DEF', 'd_pre_T0_outcome')], cols = 4)
+# epi_head_and_tail(df_recode[as.character(df_recode$d_pre_T0_outcome) == '1', c('ID_REGISTRO', 'd_time_cuts_INGRESO','d_time_cuts_DEF', 'd_pre_T0_outcome')], cols = 4)
+
+# So subset, recode var, run regressions
 
 # Clean up a bit:
 data_f <- df_recode
@@ -597,10 +562,8 @@ data_f <- data_interv
 rm(list = c('data_interv'))
 ls()
 ###
-############
 
 
-############
 ###
 # Plot:
 i <- 'd_intervention'
@@ -632,6 +595,22 @@ summary(data_f$d_intervention)[1] + summary(data_f$d_intervention)[2]
 summary(data_f_COISS$d_intervention)
 
 # Drop level as now 0:
+# Also copying function here until I update episcout:
+epi_clean_drop_zero_levels_vector <- function(factor_var) {
+    # Ensure the input is a factor
+    if (!is.factor(factor_var)) {
+        stop("The input variable is not a factor.")
+    }
+    
+    # Get the levels that are present in the factor
+    present_levels <- levels(factor_var)[table(factor_var) > 0]
+    
+    # Drop levels that are zero
+    cleaned_factor <- factor(factor_var, levels = present_levels)
+    
+    return(cleaned_factor)
+}
+
 data_f_COISS$d_intervention <- epi_clean_drop_zero_levels_vector(factor_var = data_f_COISS$d_intervention)
 summary(data_f_COISS$d_intervention)
 
@@ -641,6 +620,18 @@ rm(list = c('data_f_COISS'))
 ############
 
 
+############
+# Save full dataset to disk as tsv
+folder <- '../data/processed'
+script <- '2_df_subset'
+infile_prefix
+suffix <- 'tsv.gzip'
+outfile <- sprintf(fmt = '%s/%s_%s.%s', folder, script, infile_prefix, suffix)
+outfile
+epi_write(data_f,
+          outfile,
+          compress = 'gzip')
+############
 
 ############
 # The end:

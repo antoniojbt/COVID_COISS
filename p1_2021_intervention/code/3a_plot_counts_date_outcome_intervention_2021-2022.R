@@ -3,8 +3,13 @@
 # L. Bonifaz
 # May 2024
 
+# Better way to visualise and summarise the data from dates, time periods (analysis windows) and outcomes.
 # Plot counts and proportions by date, outcome, and intervention for 2021-2022 data.
 # Visualise the change over time by intervention and outcome.
+# Input is output from script 2_df_subset.R, specific file:
+# counts_by_dates_outcome_.txt; but lost track which one it is
+# TO DO: check and update file name and path, check code it's coming from.
+# Output descriptive plots and tables, no rdata or full dataset.
 ############
 
 
@@ -40,7 +45,7 @@ colnames(counts_d)
 
 ############
 # Add vars needed for plotting:
-counts_d$time <- c('01-01-2021', # pre-T0; start of data collection for database 2021
+counts_d$time <- c('01-01-2021', # pre_T0; start of data collection for database 2021
                       '01-01-2021',
                       '01-01-2021',
                       '01-01-2021',
@@ -64,7 +69,7 @@ counts_d$time <- c('01-01-2021', # pre-T0; start of data collection for database
                       '19-12-2021',
                       '19-12-2021',
                       '19-12-2021',
-                      '28-02-2022', # post-T2; start of; one day post T2
+                      '28-02-2022', # post_T2; start of; one day post T2
                       '28-02-2022',
                       '28-02-2022',
                       '28-02-2022'

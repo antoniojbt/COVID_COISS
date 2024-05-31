@@ -3,6 +3,10 @@
 # L. Bonifaz
 # April 2024
 # Should run all databases for COVID DGE
+# Input is joined databases from 0_COISS_comp_base.R script
+# Output is cleaned and labelled data for further analysis:
+  # subsetting for this project: COVID+ only, COISS only in script 2_df_subset.R
+  # and downstream (descriptive stats, plots, regression, etc.)
 ############
 
 
@@ -39,10 +43,10 @@
 
 ###
 # TO DOs:
-  # Check loops with survfit as issues with passing dynamic variables, meaning plots are the same. Script 4a could be cleaned up but OK for now, worked as exploratory for 2021-2022 databases. If running/joining others then simplify as complication are the T0, T1 T2 windows for analysis.
+  # Script 4a could be cleaned up but OK for now, worked as exploratory for 2021-2022 databases. If running/joining others then simplify as complication are the T0, T1 T2 windows for analysis.
   # Finish pretty plots:
     # KM by date cut off and intervention
-    # plot of counts and proportions by date, outcome, and intervention
+    # plot of counts and proportions by date, outcome, and intervention, see script 3a
 
   # setup HPC scripts as models take too long
   # Run DiD as primary analysis; followed by eg Cox or MLM
@@ -185,15 +189,15 @@ dups
 # Get indices:
 unique_dup_IDs <- unique(dups$ID_REGISTRO)
 unique_dup_IDs
-inds <- which(as.character(df_dups$ID_REGISTRO) == as.character(unique_dup_IDs))
+inds <- which(as.character(df_dups$ID_REGISTRO) %in% as.character(unique_dup_IDs))
+inds
+df_dups[inds, ]
+
 # Add a row index:
 dups$inds <- inds
 dups
 dups[, c('ID_REGISTRO', 'inds')] 
 
-
-# TO DO: make more efficient, for now running full dataset to remove duplicates:
-# Will error if no duplicates (?) or if there are multiple groups/pairs of duplicates
 # Keep the one with the most recent FECHA_ACTUALIZACION:
 dups_keep <- dups %>%
   group_by(ID_REGISTRO) %>%
@@ -203,9 +207,11 @@ dups_keep[, c('ID_REGISTRO', 'inds')]
 
 # Macth IDs to original data:
 inds_keep <- dups_keep$inds
+inds_keep
 df_dups <- df_dups[-inds_keep, ]
 
 # Check:
+nrow(data_f) - nrow(df_dups) == nrow(dups_keep)
 dups <- epi_clean_get_dups(df_dups, var = "ID_REGISTRO")
 dups # should be zero
 
@@ -641,6 +647,25 @@ dim(df_dates)
 
 
 ###
+# Re-censor and add outcome variables for different periods as follow-up time is too long if based on FECHA_INGRESO
+
+# TO DO: continue here
+# Define new censoring time
+censoring_time <- 30 # for new cut-off for follow-up time, e.g. 30 days
+
+# Re-introduce new censoring:
+df_dates$d_death_30 <- ifelse(data_f$d_days_to_death > censoring_time, 0, data_f$d_death)
+df_dates$d_days_to_death_30 <- pmin(data_f$d_days_to_death, censoring_time)
+
+data_f$d_death_30 <- as.integer(data_f$d_death_30)
+
+summary(data_f$d_death_30)
+summary(data_f$d_days_to_death_30)
+table(data_f$d_days_to_death_30)
+###
+
+
+###
 # Add time to d_death, will use date of hospitalisation as start date, because
 # is more relevant for treatment analysis (COISS vs non)
 # is available, looks OK
@@ -651,7 +676,6 @@ dim(df_dates)
 
 summary(data_f$FECHA_SINTOMAS)
 summary(data_f$FECHA_ACTUALIZACION)
-
 
 
 df_dates$d_days_to_death <- as.numeric(difftime(time1 = df_dates$FECHA_DEF,

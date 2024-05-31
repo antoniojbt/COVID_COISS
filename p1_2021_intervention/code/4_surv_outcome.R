@@ -2,6 +2,10 @@
 # COISS paper 1
 # L. Bonifaz
 # May 2024
+
+# Survival outcome analysis: KM plots and tables
+# Input is output from script 2_df_subset.R
+# Output are various descriptive plots and tables, no rdata or full dataset.
 ############
 
 
@@ -27,8 +31,7 @@ library(summarytools)
 
 ############
 # Load a previous R session, data and objects:
-# infile <- '../data/processed/3_desc_plots_COVID19MEXICO2021_COVID-only_COISS-only.rdata.gzip'
-infile <- '../data/processed/3_desc_plots_COVID19MEXICO2021_2022_COVID-only_COISS-only.rdata.gzip'
+infile <- '../data/processed/2_df_subset_COVID19MEXICO_2021_2022_COVID-only_COISS-only.rdata.gzip'
 load(infile, verbose = TRUE)
 data_f <- data_f # just to get rid of RStudio warnings
 dim(data_f)
@@ -61,7 +64,6 @@ summary(factor(data_f$d_death))
 # check: have fewer NAs, need to check
 summary(data_f$d_intervention)
 
-summary(data_f$d_time_cuts)
 summary(data_f$FECHA_SINTOMAS)
 # check as max symptoms here is after FECHA_ACTUALIZACION
 summary(data_f$FECHA_ACTUALIZACION)
@@ -196,8 +198,8 @@ epi_write(file_object = km_zoom$data.survplot,
 # Events are not re-censored though, hence the drop in survival
 # Re-censoring below, keep these for comparison
 
-# max_followup_time <- 30
-max_followup_time <- 60
+max_followup_time <- 30
+# max_followup_time <- 60
 
 # Truncate data:
 data_f_truncated <- data_f %>%
@@ -325,37 +327,38 @@ epi_write(file_object = km_1$data.survplot,
 
 
 ############
-# The end:
-# Save objects, to eg .RData file:
-folder <- '../data/processed'
-script <- '4_surv_outcome'
-infile_prefix
-suffix <- 'rdata.gzip'
-outfile <- sprintf(fmt = '%s/%s_%s.%s', folder, script, infile_prefix, suffix)
-outfile
-
-# Check and remove objects that are not necessary to save:
-object_sizes <- sapply(ls(), function(x) object.size(get(x)))
-object_sizes <- as.matrix(rev(sort(object_sizes))[1:10])
-object_sizes
-objects_to_save <- (c('data_f', 'infile_prefix', 'outfile'))
-
-# Save:
-save(list = objects_to_save,
-     file = outfile,
-     compress = 'gzip'
-     )
-
-# Remove/clean up session:
-all_objects <- ls()
-all_objects
-rm_list <- which(!all_objects %in% objects_to_save)
-all_objects[rm_list]
-rm(list = all_objects[rm_list])
-ls() # Anything defined after all_objects and objects_to_save will still be here
-
-sessionInfo()
-# q()
-
-# Next: run the script for xxx
+# No changes to the rdata file loaded, no need to save again.
+# # The end:
+# # Save objects, to eg .RData file:
+# folder <- '../data/processed'
+# script <- '4_surv_outcome'
+# infile_prefix
+# suffix <- 'rdata.gzip'
+# outfile <- sprintf(fmt = '%s/%s_%s.%s', folder, script, infile_prefix, suffix)
+# outfile
+# 
+# # Check and remove objects that are not necessary to save:
+# object_sizes <- sapply(ls(), function(x) object.size(get(x)))
+# object_sizes <- as.matrix(rev(sort(object_sizes))[1:10])
+# object_sizes
+# objects_to_save <- (c('data_f', 'infile_prefix', 'outfile'))
+# 
+# # Save:
+# save(list = objects_to_save,
+#      file = outfile,
+#      compress = 'gzip'
+#      )
+# 
+# # Remove/clean up session:
+# all_objects <- ls()
+# all_objects
+# rm_list <- which(!all_objects %in% objects_to_save)
+# all_objects[rm_list]
+# rm(list = all_objects[rm_list])
+# ls() # Anything defined after all_objects and objects_to_save will still be here
+# 
+# sessionInfo()
+# # q()
+# 
+# # Next: run the script for xxx
 ############
