@@ -582,19 +582,19 @@ str(data_f)
 ############
 ###
 # Remove non-sensical dates and add new variables
-# Death before admission:
-str(data_f)
-
-counts <- length(which(as.Date(data_f$FECHA_DEF) < as.Date(data_f$FECHA_INGRESO)))
-counts
-# 74 fo 2021 database; 84 for 2021-2022
-counts <- length(which(as.Date(data_f$FECHA_DEF) < as.Date(data_f$FECHA_SINTOMAS)))
-counts
-# 0 fo 2021 database; 1 for 2021-2022
-
+# Death before admission
 # Test and change to NAs in outcome/event variable (death):
 df_dates <- data_f
 summary(df_dates$FECHA_DEF)
+str(df_dates)
+
+counts <- length(which(as.Date(df_dates$FECHA_DEF) < as.Date(df_dates$FECHA_INGRESO)))
+counts
+# 74 fo 2021 database; 84 for 2021-2022
+counts <- length(which(as.Date(df_dates$FECHA_DEF) < as.Date(df_dates$FECHA_SINTOMAS)))
+counts
+# 0 fo 2021 database; 1 for 2021-2022
+
 
 length(which(df_dates$FECHA_DEF < df_dates$FECHA_INGRESO))
 length(which(!is.na(as.Date(df_dates$FECHA_DEF)) &
@@ -643,25 +643,13 @@ summary(as.factor(df_dates$d_death))
 head(data_f$FECHA_DEF)
 head(df_dates$FECHA_DEF)
 dim(df_dates)
-###
 
+# Clean up a bit:
+str(df_dates)
 
-###
-# Re-censor and add outcome variables for different periods as follow-up time is too long if based on FECHA_INGRESO
-
-# TO DO: continue here
-# Define new censoring time
-censoring_time <- 30 # for new cut-off for follow-up time, e.g. 30 days
-
-# Re-introduce new censoring:
-df_dates$d_death_30 <- ifelse(data_f$d_days_to_death > censoring_time, 0, data_f$d_death)
-df_dates$d_days_to_death_30 <- pmin(data_f$d_days_to_death, censoring_time)
-
-data_f$d_death_30 <- as.integer(data_f$d_death_30)
-
-summary(data_f$d_death_30)
-summary(data_f$d_days_to_death_30)
-table(data_f$d_days_to_death_30)
+data_f <- df_dates
+rm(list = c('df_dates'))
+str(data_f)
 ###
 
 
@@ -673,6 +661,8 @@ table(data_f$d_days_to_death_30)
 # probably less biased than date of symptom onset
 # Note: check max symptoms is after FECHA_ACTUALIZACION
 # Use 'd_' as suffix for new/derived variables
+
+data_f <- df_dates
 
 summary(data_f$FECHA_SINTOMAS)
 summary(data_f$FECHA_ACTUALIZACION)
@@ -715,11 +705,35 @@ summary(df_dates$d_days_to_death)
 # Check:
 summary(df_dates$d_days_to_death)
 summary(df_dates$FECHA_DEF)
-summary(as.factor(df_dates$death))
+summary(as.factor(df_dates$d_death))
 
-# Clean up a bit:
-str(df_dates)
+# Clean up:
+data_f <- df_dates
+rm(list = c('df_dates'))
+str(data_f)
+###
 
+
+###
+# Re-censor and add outcome variables for different periods as follow-up time is too long if based on FECHA_INGRESO
+
+df_dates <- data_f
+
+# Check code above and clean up for df_dates object
+# Define new censoring time
+censoring_time <- 30 # for new cut-off for follow-up time, e.g. 30 days
+
+# Re-introduce new censoring:
+df_dates$d_death_30 <- ifelse(df_dates$d_days_to_death > censoring_time, 0, df_dates$d_death)
+df_dates$d_days_to_death_30 <- pmin(df_dates$d_days_to_death, censoring_time)
+
+df_dates$d_death_30 <- as.integer(df_dates$d_death_30)
+
+summary(df_dates$d_death_30)
+summary(df_dates$d_days_to_death_30)
+table(df_dates$d_days_to_death_30)
+
+# Clean up:
 data_f <- df_dates
 rm(list = c('df_dates'))
 str(data_f)

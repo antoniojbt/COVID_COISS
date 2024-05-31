@@ -256,24 +256,6 @@ epi_write(file_object = km_x_days$data.survplot,
 
 
 ############
-# Re-censor and re-define variables as follow-up time is too long if based on FECHA_INGRESO
-
-###
-# Define new censoring time
-censoring_time <- 30 # for new cut-off for follow-up time, e.g. 30 days
-
-# Re-introduce new censoring:
-data_f$d_death_30 <- ifelse(data_f$d_days_to_death > censoring_time, 0, data_f$d_death)
-data_f$d_days_to_death_30 <- pmin(data_f$d_days_to_death, censoring_time)
-
-data_f$d_death_30 <- as.integer(data_f$d_death_30)
-
-summary(data_f$d_death_30)
-summary(data_f$d_days_to_death_30)
-table(data_f$d_days_to_death_30)
-###
-
-
 ###
 # Fit Kaplan-Meier model with censoring
 surv_obj <- Surv(time = data_f$d_days_to_death_30,
@@ -288,6 +270,10 @@ surv_fit_censored <- survfit(surv_obj ~ 1,
 
 ###
 # Plot the Kaplan-Meier survival curve with censoring
+
+# Define new censoring time
+censoring_time <- 30 # for new cut-off for follow-up time, e.g. 30 days
+
 ylim <- c(0.95, 1.00)
 
 km_censor <- ggsurvplot(surv_fit_censored,

@@ -520,17 +520,29 @@ for (i in titles) {
     suffix <- 'txt'
     outfile <- sprintf(fmt = '%s/%s_%s_%s_%s.%s', infile_prefix, file_n, outcome_var, time_var, i, suffix)
     outfile
-    epi_write(file_object = surv_table_km_dates_by_levels[[i]],
-              file_name = outfile
-              )
+    # Check list is not empty, skip if empty:
+    if(!is.null(surv_table_km_dates_by_levels[[i]])) {
+        epi_write(file_object = surv_table_km_dates_by_levels[[i]],
+                  file_name = outfile
+                  )
+        } else {
+            print(i)
+            print("Empty list, not saving")
+            }
+        
     
     file_n <- 'data_plot_km_dates_by_levels'
     suffix <- 'txt'
     outfile <- sprintf(fmt = '%s/%s_%s_%s_%s.%s', infile_prefix, file_n, outcome_var, time_var, i, suffix)
     outfile
-    epi_write(file_object = data_plot_km_dates_by_levels[[i]],
-              file_name = outfile
-              )
+    if(!is.null(data_plot_km_dates_by_levels[[i]])) {
+        epi_write(file_object = data_plot_km_dates_by_levels[[i]],
+                  file_name = outfile
+                  )
+    } else {
+            print(i)
+            print("Empty list, not saving")
+            }
     }
 
 ###
