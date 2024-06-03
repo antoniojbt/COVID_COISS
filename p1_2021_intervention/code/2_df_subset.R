@@ -33,7 +33,8 @@
   # "d_time_cuts_INGRESO" = time cuts based on admission date; factor ordered
   # "d_time_cuts_DEF" = time cuts based on outcome date; factor ordered
   # "d_time_cuts_prev" = time cuts based on period, including admissions and events; factor ordered
-  # "d_intervention" = COISS intervention; integer
+  # "d_intervention_T1" = COISS intervention at T1; integer
+  # "d_intervention_T2" = COISS intervention at T2; integer
 
 # For regressions:
   # subset based on d_time_cuts_prev, which will be pop at risk for period
@@ -528,33 +529,64 @@ str(data_f)
 
 ############
 ###
-# Intervention variable
+# Intervention variables, there are two. One for T1 and one for T2 as non-COISS states changed over time.
 # entidad_um "Identifica la entidad donde se ubica la unidad medica que brindó la atención."
 dplyr::glimpse(data_f$ENTIDAD_UM)
 summary(data_f$ENTIDAD_UM)
 
-# Labels:
-interv_labels <- '../data/raw/diccionario_datos_covid19/COISS_states.csv'
+data_interv <- data_f
+
+# Labels for T1:
+interv_labels <- '../data/processed/var_labels_etc/COISS_states_T1.csv'
 interv_labels <- epi_read(interv_labels)
 epi_head_and_tail(interv_labels, cols = 4)
+# print(interv_labels, n = 32)
 
-data_interv <- data_f %>% left_join(interv_labels[, c(2, 4)],
-                                    by = c('ENTIDAD_UM'),
-                                    )
+data_interv <- data_interv %>% dplyr::left_join(interv_labels[, c(2, 4)],
+                                           by = c('ENTIDAD_UM'),
+                                          )
 
 # Means 'intervention' variable has been added
 # Add 'd_' for quick look up later if many more derived variables are created:
-data_interv$d_intervention <- data_interv$intervention
+# Add that these are for T1 analysis
+data_interv$d_intervention_T1 <- data_interv$intervention
 data_interv$intervention <- NULL
 str(data_interv)
 
-summary(as.factor(data_interv$d_intervention))
-data_interv$d_intervention <- factor(data_interv$d_intervention,
-                                   levels = c('non-COISS', 'COISS', 'other'),
-                                   ordered = TRUE
+summary(as.factor(data_interv$d_intervention_T1))
+data_interv$d_intervention_T1 <- factor(data_interv$d_intervention_T1,
+                                   levels = c('non-COISS', 'COISS', 'other')
                                    )
-summary(data_interv$d_intervention)
+summary(data_interv$d_intervention_T1)
 str(data_interv)
+dim(data_interv)
+
+# Labels for T2:
+interv_labels <- '../data/processed/var_labels_etc/COISS_states_T2.csv'
+interv_labels <- epi_read(interv_labels)
+epi_head_and_tail(interv_labels, cols = 4)
+
+data_interv <- data_interv %>% dplyr::left_join(interv_labels[, c(2, 4)],
+                                           by = c('ENTIDAD_UM'),
+                                          )
+
+# Means 'intervention' variable has been added
+# Add 'd_' for quick look up later if many more derived variables are created:
+# Add that these are for T2 analysis
+data_interv$d_intervention_T2 <- data_interv$intervention
+data_interv$intervention <- NULL
+str(data_interv)
+
+summary(as.factor(data_interv$d_intervention_T2))
+data_interv$d_intervention_T2 <- factor(data_interv$d_intervention_T2,
+                                   levels = c('non-COISS', 'COISS', 'other')
+                                   )
+summary(data_interv$d_intervention_T2)
+str(data_interv)
+dim(data_interv)
+
+# Check, COISS should be the same number:
+summary(data_interv$d_intervention_T1)[2] == summary(data_interv$d_intervention_T2)[2]
 
 
 # Clean up:
@@ -565,15 +597,30 @@ ls()
 
 
 ###
-# Plot:
-i <- 'd_intervention'
+# Plot T1:
+i <- 'd_intervention_T1'
 file_n <- 'plots_bar'
 suffix <- 'pdf'
 infile_prefix
 outfile <- sprintf(fmt = '%s/%s_%s.%s', infile_prefix, file_n, i, suffix)
 outfile
 plot_list <- list()
-plot_1 <- epi_plot_bar(data_f, var_x = 'd_intervention')
+plot_1 <- epi_plot_bar(data_f, var_x = 'd_intervention_T1')
+plot_list[[i]] <- plot_1
+my_plot_grid <- epi_plots_to_grid(plot_list = plot_list)
+epi_plot_cow_save(file_name = outfile, plot_grid = my_plot_grid)
+###
+
+###
+# Plot T2:
+i <- 'd_intervention_T2'
+file_n <- 'plots_bar'
+suffix <- 'pdf'
+infile_prefix
+outfile <- sprintf(fmt = '%s/%s_%s.%s', infile_prefix, file_n, i, suffix)
+outfile
+plot_list <- list()
+plot_1 <- epi_plot_bar(data_f, var_x = 'd_intervention_T2')
 plot_list[[i]] <- plot_1
 my_plot_grid <- epi_plots_to_grid(plot_list = plot_list)
 epi_plot_cow_save(file_name = outfile, plot_grid = my_plot_grid)
@@ -582,41 +629,63 @@ epi_plot_cow_save(file_name = outfile, plot_grid = my_plot_grid)
 
 
 ############
-# Exclude 'others' (CDMX, EdoMex)
-epi_head_and_tail(data_f)
-colnames(data_f)
-summary(data_f$d_intervention)
+# Can't exclude 'other' rows in d_intervention_T1 
+# and
+# d_intervention_T2 as effectively have two datasets now and would remove all admissions from excluded states at either T1 analysis or T2.
+# Exclude at each analysis separately
 
-data_f_COISS <- data_f[which(!as.character(data_f$d_intervention) == 'other'), ]
+
+# # Exclude 'others' (CDMX, EdoMex), there are two intervention variables
+# 
+# data_f_COISS <- data_f
+# 
+# epi_head_and_tail(data_f_COISS)
+# colnames(data_f_COISS)
+# summary(data_f_COISS$d_intervention_T1)
+# summary(data_f_COISS$d_intervention_T2)
+# 
+# 
+# data_f_COISS <- data_f_COISS[which(!as.character(data_f_COISS$d_intervention_T1) == 'other'), ]
+# data_f_COISS <- data_f_COISS[which(!as.character(data_f_COISS$d_intervention_T2) == 'other'), ]
+# dim(data_f)
+# dim(data_f_COISS)
+# 
+# summary(data_f_COISS$d_intervention_T1)
+# summary(data_f_COISS$d_intervention_T2)
+# # summary(data_f$d_intervention)[1] + summary(data_f$d_intervention)[2]
+# 
+# 
+# # Drop level as now 0:
+# # Also copying function here until I update episcout:
+# epi_clean_drop_zero_levels_vector <- function(factor_var) {
+#     # Ensure the input is a factor
+#     if (!is.factor(factor_var)) {
+#         stop("The input variable is not a factor.")
+#     }
+#     
+#     # Get the levels that are present in the factor
+#     present_levels <- levels(factor_var)[table(factor_var) > 0]
+#     
+#     # Drop levels that are zero
+#     cleaned_factor <- factor(factor_var, levels = present_levels)
+#     
+#     return(cleaned_factor)
+# }
+# 
+# data_f_COISS$d_intervention_T1 <- epi_clean_drop_zero_levels_vector(factor_var = data_f_COISS$d_intervention_T1)
+# data_f_COISS$d_intervention_T2 <- epi_clean_drop_zero_levels_vector(factor_var = data_f_COISS$d_intervention_T2)
+# summary(data_f_COISS$d_intervention_T1)
+# summary(data_f_COISS$d_intervention_T2)
+# 
+# # Remove objects, keep objects names so that code can be re-run as several DBs:
+# data_f <- data_f_COISS
+# rm(list = c('data_f_COISS'))
+############
+
+
+############
 dim(data_f)
-dim(data_f_COISS)
-summary(data_f$d_intervention)
-summary(data_f$d_intervention)[1] + summary(data_f$d_intervention)[2]
-summary(data_f_COISS$d_intervention)
-
-# Drop level as now 0:
-# Also copying function here until I update episcout:
-epi_clean_drop_zero_levels_vector <- function(factor_var) {
-    # Ensure the input is a factor
-    if (!is.factor(factor_var)) {
-        stop("The input variable is not a factor.")
-    }
-    
-    # Get the levels that are present in the factor
-    present_levels <- levels(factor_var)[table(factor_var) > 0]
-    
-    # Drop levels that are zero
-    cleaned_factor <- factor(factor_var, levels = present_levels)
-    
-    return(cleaned_factor)
-}
-
-data_f_COISS$d_intervention <- epi_clean_drop_zero_levels_vector(factor_var = data_f_COISS$d_intervention)
-summary(data_f_COISS$d_intervention)
-
-# Remove objects, keep objects names so that code can be re-run as several DBs:
-data_f <- data_f_COISS
-rm(list = c('data_f_COISS'))
+str(data_f)
 ############
 
 

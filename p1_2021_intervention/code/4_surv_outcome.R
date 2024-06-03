@@ -61,8 +61,8 @@ dim(data_f)
 str(data_f)
 summary(data_f$d_days_to_death)
 summary(factor(data_f$d_death))
-# check: have fewer NAs, need to check
-summary(data_f$d_intervention)
+summary(data_f$d_intervention_T1)
+summary(data_f$d_intervention_T2)
 
 summary(data_f$FECHA_SINTOMAS)
 # check as max symptoms here is after FECHA_ACTUALIZACION
@@ -93,8 +93,11 @@ summarytools::descr(data_f$d_days_to_death)
 ###
 # Plot K-M
 # Create a Surv object:
-summary(data_f$d_intervention)
-str(data_f$d_intervention)
+summary(data_f$d_intervention_T1)
+summary(data_f$d_intervention_T2)
+
+str(data_f$d_intervention_T1)
+str(data_f$d_intervention_T2)
 
 surv_object <- survival::Surv(time = data_f$d_days_to_death,
                               event = data_f$d_death

@@ -364,7 +364,7 @@ var_fact <- factor(var_fact,
 table(var_fact)
 
 # Loop:
-lookup_df <- '../data/201128_Catalogos_factor_labels.csv'
+lookup_df <- '../data/processed/var_labels_etc/201128_Catalogos_factor_labels.csv'
 lookup_df <- epi_read(lookup_df)
 epi_head_and_tail(lookup_df)
 str(lookup_df)

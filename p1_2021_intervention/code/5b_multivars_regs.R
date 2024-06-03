@@ -31,8 +31,7 @@ library(pROC)
 
 ############
 # Load a previous R session, data and objects:
-# infile <- '../data/processed/4a_surv_outcome_bivariate_COVID19MEXICO2021_COVID-only_COISS-only.rdata.gzip'
-infile <- '../data/processed/4a_surv_outcome_bivariate_COVID19MEXICO2021_2022_COVID-only_COISS-only.rdata.gzip'
+infile <- '../data/processed/2_df_subset_COVID19MEXICO_2021_2022_COVID-only_COISS-only.rdata.gzip'
 load(infile, verbose = TRUE)
 data_f <- data_f # just to get rid of RStudio warnings
 dim(data_f)
@@ -73,6 +72,24 @@ prop.table(table(data_f_sub[[outcome_var]]))
 
 ############
 # Set up and loop
+
+###
+# TO DO: check whether to load a regression set-up script
+# # Set-up analyses variables:
+# outcome_var <- 'd_death_30'
+# # outcome_var <- 'd_death'
+# time_var <- 'd_days_to_death_30'
+# # time_var <- 'd_days_to_death'
+# 
+# # Intervention vars:
+# intervention_vars <- c('d_intervention_T1', 'd_intervention_T2')
+# 
+# # Analysis windows subsets:
+# df_T1 <- data_f[data_f$d_intervention_T1 == 'COISS' | data_f$d_intervention_T1 == 'non-COISS', ]
+# df_T2 <- data_f[data_f$d_intervention_T2 == 'COISS' | data_f$d_intervention_T2 == 'non-COISS', ]
+
+###
+
 
 ###
 # df <- data_f_sub
@@ -238,37 +255,38 @@ epi_write(file_object = chi_df,
 
 
 ############
-# The end:
-# Save objects, to eg .RData file:
-folder <- '../data/processed'
-script <- '5a_multivars_regs'
-infile_prefix
-suffix <- 'rdata.gzip'
-outfile <- sprintf(fmt = '%s/%s_%s.%s', folder, script, infile_prefix, suffix)
-outfile
-
-# Check and remove objects that are not necessary to save:
-object_sizes <- sapply(ls(), function(x) object.size(get(x)))
-object_sizes <- as.matrix(rev(sort(object_sizes))[1:10])
-object_sizes
-objects_to_save <- (c('data_f', 'infile_prefix', 'outfile'))
-
-# Save:
-save(list = objects_to_save,
-     file = outfile,
-     compress = 'gzip'
-)
-
-# Remove/clean up session:
-all_objects <- ls()
-all_objects
-rm_list <- which(!all_objects %in% objects_to_save)
-all_objects[rm_list]
-rm(list = all_objects[rm_list])
-ls() # Anything defined after all_objects and objects_to_save will still be here
-
-sessionInfo()
-# q()
-
-# Next: run the script for xxx
+# No changes to the rdata file loaded, no need to save again.
+# # The end:
+# # Save objects, to eg .RData file:
+# folder <- '../data/processed'
+# script <- '5a_multivars_regs'
+# infile_prefix
+# suffix <- 'rdata.gzip'
+# outfile <- sprintf(fmt = '%s/%s_%s.%s', folder, script, infile_prefix, suffix)
+# outfile
+# 
+# # Check and remove objects that are not necessary to save:
+# object_sizes <- sapply(ls(), function(x) object.size(get(x)))
+# object_sizes <- as.matrix(rev(sort(object_sizes))[1:10])
+# object_sizes
+# objects_to_save <- (c('data_f', 'infile_prefix', 'outfile'))
+# 
+# # Save:
+# save(list = objects_to_save,
+#      file = outfile,
+#      compress = 'gzip'
+# )
+# 
+# # Remove/clean up session:
+# all_objects <- ls()
+# all_objects
+# rm_list <- which(!all_objects %in% objects_to_save)
+# all_objects[rm_list]
+# rm(list = all_objects[rm_list])
+# ls() # Anything defined after all_objects and objects_to_save will still be here
+# 
+# sessionInfo()
+# # q()
+# 
+# # Next: run the script for xxx
 ############
