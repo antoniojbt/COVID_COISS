@@ -1,60 +1,4 @@
-
 #########
-# Covariate selection
-
-###
-# Univariate Analysis:
-# 
-# Perform univariate logistic regression for each covariate to assess its individual relationship with the outcome.
-# Retain covariates with significant p-values (typically < 0.05).
-covariates <- c("age", "sex", "bmi", "smoking")
-univ_results <- lapply(covariates, function(var) {
-  formula <- as.formula(paste("outcome ~", var))
-  glm(formula, data = data_f, family = binomial)
-})
-###
-
-
-###
-# Correlation Analysis:
-# 
-# Examine the correlation matrix for numeric covariates to identify highly correlated variables (e.g., correlation > 0.7).
-
-# Correlation matrix
-numeric_vars <- sapply(data_f, is.numeric)
-cor_matrix <- cor(data_f[, numeric_vars])
-print(cor_matrix)
-###
-
-
-###
-# LASSO Regression:
-# 
-# Use LASSO (Least Absolute Shrinkage and Selection Operator) for variable selection, which can handle multicollinearity and high-dimensional data.
-
-install.packages("glmnet")
-library(glmnet)
-# Prepare data for glmnet
-x <- model.matrix(outcome ~ ., data = data_f)[, -1]
-y <- data_f$outcome
-lasso_model <- cv.glmnet(x, y, family = "binomial", alpha = 1)
-coef(lasso_model, s = "lambda.min")
-###
-
-
-###
-# Correlation Matrix:
-# 
-# Examine the correlation matrix to identify pairs of covariates with high correlation (e.g., correlation > 0.7).
-# Correlation matrix for numeric variables
-numeric_vars <- sapply(data_f, is.numeric)
-cor_matrix <- cor(data_f[, numeric_vars])
-print(cor_matrix)
-
-###
-#########
-
-
 #########
 # Log reg test of assumptions
 
@@ -88,9 +32,9 @@ model_box_tidwell <- glm(outcome ~ predictor1 + predictor2 + I(predictor1 * log_
 summary(model_box_tidwell)
 ###
 
+
 ###
-# 
-# 3. Absence of Multicollinearity
+# Absence of Multicollinearity
 # Predictors should not be highly correlated. Multicollinearity can be checked using:
 # 
 # Variance Inflation Factor (VIF): VIF values above 10 indicate high multicollinearity.
@@ -108,7 +52,7 @@ vif(full_model)
 
 
 ###
-# 4. No Perfect Separation
+# No Perfect Separation
 # The outcome should not be perfectly separated by the predictors. Perfect separation can be identified by:
 # 
 # Model Warnings: Convergence issues or infinite coefficients.
@@ -116,12 +60,13 @@ vif(full_model)
 ###
 
 ###
-# 5. Adequate Sample Size
+# Adequate Sample Size
 # Ensure an adequate number of events per predictor variable. A common rule of thumb is at least 10 events per predictor.
 ###
 
+
 ###
-# 6. Goodness of Fit
+# Goodness of Fit
 # Assess the model's goodness of fit using:
 # 
 # Hosmer-Lemeshow Test: Evaluates how well the model fits the data.
@@ -139,7 +84,7 @@ pR2(model)
 
 
 ###
-# 7. Influential Observations
+# Influential Observations
 # Identify influential observations using:
 # 
 # Cook's Distance: Values above 1 indicate influential points.
@@ -155,10 +100,4 @@ hatvalues <- hatvalues(model)
 plot(hatvalues, type="h", main="Leverage Values", ylab="Leverage")
 abline(h = 2 * (length(model$coefficients) + 1) / length(hatvalues), col="red") # Cutoff for high leverage
 ###
-
-###
-
-
-###
-
 #########

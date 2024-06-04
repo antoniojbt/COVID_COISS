@@ -70,20 +70,18 @@ time_var <- 'd_days_to_death_30'
 # time_var <- 'd_days_to_death'
 
 # Intervention var:
-intervention_var <- 'd_intervention_T1'
-# intervention_var <- 'd_intervention_T2'
-###
+# intervention_var <- 'd_intervention_T1'
+intervention_var <- 'd_intervention_T2'
 
-###
 # Set data frame to use:
 data_f_T1 <- data_f_T1 # to remove RStudio warnings
 data_f_T2 <- data_f_T2 # to remove RStudio warnings
 
-df <- data_f_T1
-df_name <- 'data_f_T1'
+# df <- data_f_T1
+# df_name <- 'data_f_T1'
 
-# df <- data_f_T2
-# df_name <- 'data_f_T2'
+df <- data_f_T2
+df_name <- 'data_f_T2'
 
 # df <- data_f
 # df <- data_f_sub
@@ -116,6 +114,13 @@ lapply(df[, deaths_periods_list], function(x) summary(as.factor(x)))
 # 0's look balanced as coded for all if no event at time-period for individual
 dim(df)
 df[[intervention_var]]
+###
+
+
+###
+# Analyse covariates and outcome vars to check colinearity and other issues
+# See code snippets from log_reg_assumptions.R and covar_selection.R
+# Done in covar?_selection.R
 ###
 
 
@@ -153,7 +158,7 @@ covars <- c(intervention_var,
             # "d_time_cuts", # exclude for now as running models for each cut
             "EDAD",
             "ORIGEN",
-            "SECTOR",
+            # "SECTOR", # High VIF (>10), exclude
             "SEXO",
             # "TIPO_PACIENTE", # errors, don't know why
             # "INTUBADO", # high NA's
@@ -162,7 +167,7 @@ covars <- c(intervention_var,
             # "EMBARAZO", # errors, don't know why; high NA's
             # "HABLA_LENGUA_INDIG", # errors, don't know why
             "INDIGENA",
-            "DIABETES",
+            # "DIABETES", # collinear with HIPERTENSION
             "EPOC",
             "ASMA",
             "INMUSUPR",
@@ -187,12 +192,7 @@ covars <- c(intervention_var,
 lapply(df[, covars], summary)
 ###
 
-###
 # TO DO: continue here
-# TO DO: analyse covariates and outcome vars to check colinearity and other issues
-
-###
-
 
 ###
 # Initialize storage for results, already have proportions, tables and chi-sq:
@@ -249,6 +249,8 @@ for (i in time_cuts) {
 
 # Combine GLM results into a single data frame
 glm_results_df <- do.call(rbind, glm_results_list)
+
+# View(glm_results_df)
 
 # Save:
 file_n <- 'glm_results_time_points_covars'
