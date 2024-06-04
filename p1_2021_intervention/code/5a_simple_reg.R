@@ -10,16 +10,16 @@
 
 
 ############
-project_loc <- '/Users/antoniob/Documents/work/science/projects/projects/ongoing/laura_bonifaz/COVID_COISS/p1_2021_intervention/results/'
-getwd()
-setwd(project_loc)
-############
-
-
-############
 # Save screen outputs:
 sink("COVID19MEXICO_2021_2022_COVID-only_COISS-only/sink_output_5_regressions.R.txt")
 getwd()
+############
+
+
+############
+project_loc <- '/Users/antoniob/Documents/work/science/projects/projects/ongoing/laura_bonifaz/COVID_COISS/p1_2021_intervention/results/'
+getwd()
+setwd(project_loc)
 ############
 
 
@@ -64,7 +64,7 @@ outfile
 
 ############
 ###
-# Set-up analyses variables:
+# Set-up analysis variables:
 outcome_var <- 'd_death_30'
 # outcome_var <- 'd_death'
 time_var <- 'd_days_to_death_30'
@@ -89,31 +89,26 @@ df_name <- 'data_f_T2'
 # df <- data_f
 # df <- data_f_sub
 
+# # Function to create df and df_name
+# # TO DO: move to episcout
+# create_named_df <- function(data_obj) {
+#   df <- data_obj
+#   df_name <- deparse(substitute(data_obj))
+#   list(df = df, df_name = df_name)
+# }
+# 
+# # Get the df and name:
+# df_objs <- create_named_df(data_f_T2)
+# df <- df_objs$df
+# df_name <- df_objs$df_name
+
+
 print('Data frame in use is:')
 print(df_name)
 dim(df)
 print(df)
 colnames(df)
 ###
-############
-
-
-############
-# Run sub_sampling script as taking too long to get regressions
-# Test code first with sub-sample:
-perc_needed <- 0.10
-source('/Users/antoniob/Documents/work/science/devel/github/antoniojbt/episcout/R/sub_sampling.R')
-ls()
-data_f_sub <- data_f_sub # to remove RStudio warnings
-
-sum(data_f_sub[[outcome_var]])
-
-# Should now have data_f_sub:
-epi_head_and_tail(data_f_sub)
-table(data_f[[outcome_var]])
-table(data_f_sub[[outcome_var]])
-prop.table(table(data_f[[outcome_var]]))
-prop.table(table(data_f_sub[[outcome_var]]))
 ############
 
 
@@ -156,40 +151,6 @@ odds_ratio$measure
 
 
 ############
-###
-# By d_intervention and date:
-summary(df$d_time_cuts_prev)
-
-# Subset manually
-
-# Get windows for analysis / time periods, but exclude NAs ('true_NA' is a placeholder):
-time_cuts <- levels(df$d_time_cuts_prev)
-time_cuts <- time_cuts[time_cuts != 'true_NA']
-time_cuts
-
-pre_T0 <- df[df$d_time_cuts_prev == 'pre_T0', ]
-T0 <- df[df$d_time_cuts_prev == 'T0', ]
-gap_T0_T1 <- df[df$d_time_cuts_prev == 'gap_T0_T1', ]
-T1 <- df[df$d_time_cuts_prev == 'T1', ]
-gap_T1_T2 <- df[df$d_time_cuts_prev == 'gap_T1_T2', ]
-T2 <- df[df$d_time_cuts_prev == 'T2', ]
-post_T2 <- df[df$d_time_cuts_prev == 'post_T2', ]
-
-df_time_cuts <- list(pre_T0, T0, gap_T0_T1, T1, gap_T1_T2, T2, post_T2)
-names(df_time_cuts) <- time_cuts
-names(df_time_cuts)
-df_time_cuts
-
-lapply(df_time_cuts, dim)
-
-summary(df[[intervention_var]])
-summary(factor(df[[outcome_var]]))
-epi_head_and_tail(pre_T0)
-###
-############
-
-
-############
 # Chi-squared tests
 
 ###
@@ -200,6 +161,9 @@ summary(factor(df[[outcome_var]]))
 # Initialize list and df for results by time cuts and chi-sq test:
 by_time_cuts <- list()
 chi_df <- data.frame()
+
+# Already loaded:
+df_time_cuts <- df_time_cuts
 
 # Loop through each level of d_time_cuts_prev
 for (i in names(df_time_cuts)) {
@@ -212,7 +176,7 @@ for (i in names(df_time_cuts)) {
     prop_table <- round(prop.table(contingency_table), digits = 3)
     
     # Test, if two levels (eg subset may have no events):
-    if(nrow(contingency_table) > 1) {
+    if (nrow(contingency_table) > 1) {
         chi_test <- chisq.test(t[[outcome_var]], t[[intervention_var]])
         # print(chi_test)
             
@@ -355,7 +319,8 @@ or_test
 results_list <- list()
 
 # Subsets
-time_cuts
+# Already loaded:
+time_cuts <- time_cuts
 
 # Loop through subsets and calculate odds ratios:
 for (i in time_cuts) {
@@ -482,29 +447,6 @@ res
 
 ############
 ###
-# Total pop at time point:
-summary(df$d_time_cuts_prev)
-
-# Pop admitted at time-point:
-summary(df$d_time_cuts_INGRESO)
-
-# Pop suffered event at time-point, factor:
-summary(df$d_time_cuts_DEF)
-
-# Pop suffered event at time-point, integer:
-deaths_periods_list <- c("d_pre_T0_outcome", "d_T0_outcome",
-                         "d_gap_T0_T1_outcome", "d_T1_outcome",
-                         "d_gap_T1_T2_outcome", "d_T2_outcome",
-                         "d_post_T2_outcome"
-                         )
-lapply(df[, deaths_periods_list], function(x) summary(as.factor(x)))
-# 0's look balanced as coded for all if no event at time-period for individual
-dim(df)
-df[[intervention_var]]
-###
-
-
-###
 # Initialize storage for results, already have proportions, tables and chi-sq:
 # tables_list <- list()
 # props_list <- list()
@@ -517,10 +459,11 @@ count <- 0
 # Simple regression:
 covars <- intervention_var
 
-# Get windows for analysis / time periods, but exclude NAs ('true_NA' is a placeholder):
-time_cuts <- levels(df$d_time_cuts_prev)
-time_cuts <- time_cuts[time_cuts != 'true_NA']
+# Get windows for analysis / time periods, but exclude NA's ('true_NA' is a place-holder):
 time_cuts
+
+# Already loaded:
+deaths_periods_list <- deaths_periods_list
 
 # GLM, no interaction terms:
 for (i in time_cuts) {
@@ -536,18 +479,6 @@ for (i in time_cuts) {
     summary(as.factor(sub_df[[outcome_var_time]]))
     # Check rows with NAs don't appear, issue from script 1:
     print(epi_head_and_tail(sub_df))
-    
-    # # Run and save, chi sq but already done above, keep code for now:
-    # tabs <- table(sub_df[[outcome_var]], sub_df[['d_intervention']])
-    # tables_list[[i]] <- tabs
-    # 
-    # # Run and save:
-    # props <- round(prop.table(tabs), digits = 3)
-    # props_list[[i]] <- tabs
-    # 
-    # # Run and save:
-    # chi_res <- chisq.test(sub_df[[outcome_var]], sub_df[['d_intervention']])
-    # chi_tests_list[[i]] <- chi_test
     
     # GLM spec:
     mod_spec <- sprintf("%s ~ %s", outcome_var_time, paste(covars, collapse = " + "))

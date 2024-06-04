@@ -1,8 +1,18 @@
 ############
 # COISS paper 1
 # L. Bonifaz
-# May 2024
+# June 2024
 # Multiple variable regression setup
+
+# Input is output from script 5_regression_setup.R
+# Output are various tables from multi-variable regression analysis for each of the intervention groups (T1 group and T2 group). No rdata or full dataset.
+############
+
+
+############
+# Save screen outputs:
+sink("COVID19MEXICO_2021_2022_COVID-only_COISS-only/sink_output_5b_multivars_regs.R.txt")
+getwd()
 ############
 
 
@@ -31,7 +41,7 @@ library(pROC)
 
 ############
 # Load a previous R session, data and objects:
-infile <- '../data/processed/2_df_subset_COVID19MEXICO_2021_2022_COVID-only_COISS-only.rdata.gzip'
+infile <- "../data/processed/5_regression_setup_COVID19MEXICO_2021_2022_COVID-only_COISS-only.rdata.gzip"
 load(infile, verbose = TRUE)
 data_f <- data_f # just to get rid of RStudio warnings
 dim(data_f)
@@ -52,49 +62,43 @@ outfile
 
 
 ############
-# Run sub_sampling script as taking too long to get regressions
-# Test code first with sub-sample:
-perc_needed <- 0.10
-source('/Users/antoniob/Documents/work/science/devel/github/antoniojbt/episcout/R/sub_sampling.R')
-ls()
-data_f_sub <- data_f_sub # to remove RStudio warnings
+###
+# Set-up analysis variables:
+outcome_var <- 'd_death_30'
+# outcome_var <- 'd_death'
+time_var <- 'd_days_to_death_30'
+# time_var <- 'd_days_to_death'
 
-sum(data_f_sub$d_death_30)
+# Intervention var:
+intervention_var <- 'd_intervention_T1'
+# intervention_var <- 'd_intervention_T2'
+###
 
-# Should now have data_f_sub:
-epi_head_and_tail(data_f_sub)
-table(data_f[[outcome_var]])
-table(data_f_sub[[outcome_var]])
-prop.table(table(data_f[[outcome_var]]))
-prop.table(table(data_f_sub[[outcome_var]]))
+###
+# Set data frame to use:
+data_f_T1 <- data_f_T1 # to remove RStudio warnings
+data_f_T2 <- data_f_T2 # to remove RStudio warnings
+
+df <- data_f_T1
+df_name <- 'data_f_T1'
+
+# df <- data_f_T2
+# df_name <- 'data_f_T2'
+
+# df <- data_f
+# df <- data_f_sub
+
+print('Data frame in use is:')
+print(df_name)
+dim(df)
+print(df)
+colnames(df)
+###
 ############
 
 
 ############
 # Set up and loop
-
-###
-# TO DO: check whether to load a regression set-up script
-# # Set-up analyses variables:
-# outcome_var <- 'd_death_30'
-# # outcome_var <- 'd_death'
-# time_var <- 'd_days_to_death_30'
-# # time_var <- 'd_days_to_death'
-# 
-# # Intervention vars:
-# intervention_vars <- c('d_intervention_T1', 'd_intervention_T2')
-# 
-# # Analysis windows subsets:
-# df_T1 <- data_f[data_f$d_intervention_T1 == 'COISS' | data_f$d_intervention_T1 == 'non-COISS', ]
-# df_T2 <- data_f[data_f$d_intervention_T2 == 'COISS' | data_f$d_intervention_T2 == 'non-COISS', ]
-
-###
-
-
-###
-# df <- data_f_sub
-df <- data_f_sub
-df
 
 # Total pop at time point:
 summary(df$d_time_cuts_prev)
@@ -105,28 +109,26 @@ summary(df$d_time_cuts_INGRESO)
 # Pop suffered event at time-point, factor:
 summary(df$d_time_cuts_DEF)
 
-# Pop suffered event at time-point, integer:
-deaths_periods_list <- c("d_pre_T0_DEF", "d_T0_DEF",
-                         "d_gap_T0_T1_DEF", "d_T1_DEF",
-                         "d_gap_T1_T2_DEF", "d_T2_DEF",
-                         "d_post_T2_DEF")
+# Pop suffered event at time-point, integer. Already loaded:
+deaths_periods_list <- deaths_periods_list
+
 lapply(df[, deaths_periods_list], function(x) summary(as.factor(x)))
 # 0's look balanced as coded for all if no event at time-period for individual
 dim(df)
-df[["d_intervention"]]
+df[[intervention_var]]
 ###
 
 
 ###
-# Setup covariates
+# Set-up covariates
 # Run simple (above) then adjusted for various models
 
-colnames(data_f)
-summary(data_f$SECTOR)
-summary(data_f$ORIGEN)
-summary(data_f)
+colnames(df)
+summary(df$SECTOR)
+summary(df$ORIGEN)
+summary(df)
 
-colnames(data_f)
+colnames(df)
 
 # Excluded, admin vars:
 # "ID_REGISTRO"
@@ -147,7 +149,7 @@ extra_check <- c("FECHA_INGRESO", # surv analysis will account for it
                  )
 
 # Covariates:
-covars <- c("d_intervention",
+covars <- c(intervention_var,
             # "d_time_cuts", # exclude for now as running models for each cut
             "EDAD",
             "ORIGEN",
@@ -185,6 +187,12 @@ covars <- c("d_intervention",
 lapply(df[, covars], summary)
 ###
 
+###
+# TO DO: continue here
+# TO DO: analyse covariates and outcome vars to check colinearity and other issues
+
+###
+
 
 ###
 # Initialize storage for results, already have proportions, tables and chi-sq:
@@ -199,28 +207,27 @@ count <- 0
 # Simple regression:
 # covars <- 'd_intervention'
 
+# Get windows for analysis / time periods, but exclude NAs ('true_NA' is a place-holder)
+# Already loaded:
+time_cuts <- time_cuts
+
 # GLM, no interaction terms:
-for (i in levels(df$d_time_cuts_prev)) {
+for (i in time_cuts) {
     print(i)
     count <- count + 1
-    # by_time_cuts[[i]] <- data_f[data_f$d_time_cuts == i, ]
+    # by_time_cuts[[i]] <- df[df$d_time_cuts == i, ]
     sub_df <- df[df$d_time_cuts_prev == i, ]
-    outcome_var <- deaths_periods_list[count]
+    outcome_var_time <- deaths_periods_list[count]
+    summary(as.factor(sub_df[[outcome_var_time]]))
     
-    # # Run and save:
-    # tabs <- table(sub_df[[outcome_var]], sub_df[['d_intervention']])
-    # tables_list[[i]] <- tabs
-    # 
-    # # Run and save:
-    # props <- round(prop.table(tabs), digits = 3)
-    # props_list[[i]] <- tabs
-    # 
-    # # Run and save:
-    # chi_res <- chisq.test(sub_df[[outcome_var]], sub_df[['d_intervention']])
-    # chi_tests_list[[i]] <- chi_test
+    # Outcomes for time cut subsets were saved as char as ifelse() was problematic, convert to integer:
+    sub_df[[outcome_var_time]] <- as.integer(sub_df[[outcome_var_time]])
+    summary(as.factor(sub_df[[outcome_var_time]]))
+    # Check rows with NAs don't appear, issue from script 1:
+    print(epi_head_and_tail(sub_df))
     
     # GLM spec:
-    mod_spec <- sprintf("%s ~ %s", outcome_var, paste(covars, collapse = " + "))
+    mod_spec <- sprintf("%s ~ %s", outcome_var_time, paste(covars, collapse = " + "))
     mod_spec
     mod_form <- as.formula(mod_spec)
     print(mod_form)
@@ -233,6 +240,8 @@ for (i in levels(df$d_time_cuts_prev)) {
     # Store:
     glm_summary <- tidy(mod)
     glm_summary$time_cut <- i
+    # Get odds ratio from the log odds:
+    glm_summary$odds_ratio <- exp(glm_summary$estimate)
     glm_results_list[[i]] <- glm_summary
     # print(summary(mod))
     
@@ -242,12 +251,13 @@ for (i in levels(df$d_time_cuts_prev)) {
 glm_results_df <- do.call(rbind, glm_results_list)
 
 # Save:
-file_n <- 'glm_results_time_points'
+file_n <- 'glm_results_time_points_covars'
 suffix <- 'txt'
-i <- ''
-outfile <- sprintf(fmt = '%s/%s_%s.%s', infile_prefix, file_n, i, suffix)
+outcome_var
+df_name
+outfile <- sprintf(fmt = '%s/%s_%s_%s.%s', infile_prefix, file_n, outcome_var, df_name, suffix)
 outfile
-epi_write(file_object = chi_df,
+epi_write(file_object = glm_results_df,
           file_name = outfile
           )
 ###
@@ -286,6 +296,10 @@ epi_write(file_object = chi_df,
 # ls() # Anything defined after all_objects and objects_to_save will still be here
 # 
 # sessionInfo()
+
+# Saving screen outputs:
+sink()
+
 # # q()
 # 
 # # Next: run the script for xxx
