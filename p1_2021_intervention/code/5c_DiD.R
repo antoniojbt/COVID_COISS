@@ -1,7 +1,18 @@
 ############
 # COISS paper 1
 # L. Bonifaz
-# May 2024
+# June 2024
+
+# Difference in difference regression model
+
+# Input is output from script 5_regression_setup.R
+# Output are various tables from DiD regression analysis for each of the intervention groups (T1 group and T2 group). No rdata or full dataset.
+############
+
+############
+# Save screen outputs:
+# sink("COVID19MEXICO_2021_2022_COVID-only_COISS-only/sink_output_5c_DiD.R.txt")
+getwd()
 ############
 
 
@@ -20,18 +31,12 @@ library(ggthemes)
 library(cowplot)
 library(tidyverse)
 library(broom)
-library(lme4)
-library(survival)
-library(survminer)
-library(caret)
-library(pROC)
 ############
 
 
 ############
 # Load a previous R session, data and objects:
-# infile <- '../data/processed/4a_surv_outcome_bivariate_COVID19MEXICO2021_COVID-only_COISS-only.rdata.gzip'
-infile <- '../data/processed/4a_surv_outcome_bivariate_COVID19MEXICO2021_2022_COVID-only_COISS-only.rdata.gzip'
+infile <- "../data/processed/5_regression_setup_COVID19MEXICO_2021_2022_COVID-only_COISS-only.rdata.gzip"
 load(infile, verbose = TRUE)
 data_f <- data_f # just to get rid of RStudio warnings
 dim(data_f)
@@ -52,252 +57,191 @@ outfile
 
 
 ############
-# Run sub_sampling script as taking too long to get regressions
-# Test code first with sub-sample:
-perc_needed <- 0.01
-source('/Users/antoniob/Documents/work/science/devel/github/antoniojbt/episcout/R/sub_sampling.R')
-ls()
-data_f_sub <- data_f_sub # to remove RStudio warnings
-
-
-# Vars to test:
-# outcome_var <- 'd_death'
+###
+# Set-up analysis variables:
 outcome_var <- 'd_death_30'
-# outcome_var <- '' # these are counts as factor at each time-cut
+# outcome_var <- 'd_death'
+time_var <- 'd_days_to_death_30'
+# time_var <- 'd_days_to_death'
 
-sum(data_f_sub[[outcome_var]])
-head(data_f_sub[[outcome_var]])
+# Intervention var:
+intervention_var <- 'd_intervention_T1'
+# intervention_var <- 'd_intervention_T2'
 
-# Should now have data_f_sub:
-epi_head_and_tail(data_f_sub)
-table(data_f[[outcome_var]])
-table(data_f_sub[[outcome_var]])
-prop.table(table(data_f[[outcome_var]]))
-prop.table(table(data_f_sub[[outcome_var]]))
+# Set data frame to use:
+data_f_T1 <- data_f_T1 # to remove RStudio warnings
+data_f_T2 <- data_f_T2 # to remove RStudio warnings
+
+df <- data_f_T1
+df_name <- 'data_f_T1'
+
+# df <- data_f_T2
+# df_name <- 'data_f_T2'
+
+# df <- data_f
+# df <- data_f_sub
+
+print('Data frame in use is:')
+print(df_name)
+dim(df)
+print(df)
+colnames(df)
+###
+############
+
+
+############
+# Data to test
+
+# For both bust must come from either data_f_T2 or data_f_T2:
+df_T0 <- df[df$d_time_cuts_prev == 'T0', ]
+
+# For T1:
+df_T1 <- df[df$d_time_cuts_prev == 'T1', ]
+
+# For T2:
+# df_T2 <- df[df$d_time_cuts_prev == 'T2', ]
+
+df_T0 
+df_T1
+# df_2
+
+df <- rbind(df_T0, df_T1)
+# df <- rbind(df_T0, df_T2)
+
+df[, 'd_time_cuts_prev']
+summary(df$d_time_cuts_prev) # only T0 and T1 should have >0
+
+summary(df[[intervention_var]]) # There shouldn't be an 'other' category
+############
+
+
+############
+# Set-up covariates
+covars <- covars
+print(covars)
+# from 5_regression_setup.R
 ############
 
 
 ############
 # DiD setup
 
-###
-# By d_intervention:
-table(data_f$d_death, data_f$d_intervention)
-table(data_f$d_death_30, data_f$d_intervention)
-# These will be different as e.g. using follow-up to 30 days will change counts of events occurred by given date
+# Initialize storage for results, already have proportions, tables and chi-sq:
+# tables_list <- list()
+# props_list <- list()
+# chi_tests_list <- list()
+did_results_list <- list()
 
-# By d_intervention and date:
-summary(data_f$d_time_cuts)
-###
-
+# Keep track of indices:
+count <- 0
 
 
-############
+# TO DO: continue here
+# Shouldn't need a loop, will be joined T0 and either T1 or T2, one regression
+# Consider using pre-T0 instead of T0, unsure why they picked T0 as baseline
+# Run a univariate version with a simple (T1_COISS - T0_COISS) - (T1_non-COISS - T0_non-COISS) model
 
 
-############
-# Simple regression setup
+# Already loaded:
+time_cuts <- time_cuts
 
-###
-# Set-up formula:
-mod_spec <- sprintf("%s ~ d_intervention", outcome_var)
-mod_spec
-model_formula <- as.formula(mod_spec)
-model_formula
+# DiD with interaction terms:
+for (i in time_cuts) {
+    print(i)
+    count <- count + 1
+    # by_time_cuts[[i]] <- df[df$d_time_cuts == i, ]
+    sub_df <- df[df$d_time_cuts_prev == i, ]
+    outcome_var_time <- deaths_periods_list[count]
+    summary(as.factor(sub_df[[outcome_var_time]]))
+    
+    # Outcomes for time cut subsets were saved as char as ifelse() was problematic, convert to integer:
+    sub_df[[outcome_var_time]] <- as.integer(sub_df[[outcome_var_time]])
+    summary(as.factor(sub_df[[outcome_var_time]]))
+    # Check rows with NAs don't appear, issue from script 1:
+    print(epi_head_and_tail(sub_df))
+    
+    # DiD spec:
+    mod_spec <- sprintf("%s ~ %s + %s * %s", outcome_var_time,
+                                             paste(covars, collapse = " + "),
+                                             intervention_var,
+                                             time_var
+                        )
+    mod_spec
+    mod_form <- as.formula(mod_spec)
+    print(mod_form)
+    
+    mod <- glm(mod_form,
+                   data = sub_df,
+                   family = binomial
+                   )
+    
+    # Store:
+    did_summary <- tidy(mod)
+    did_summary$time_cut <- i
+    # Get odds ratio from the log odds:
+    did_summary$odds_ratio <- exp(did_summary$estimate)
+    did_results_list[[i]] <- did_summary
+    # print(summary(mod))
+    
+}
 
-# Fit the model
-# Use sub-sample:
-# df <- data_f
-df <- data_f_sub[data_f_sub$d_time_cuts_prev == 'T1', ]
-df <- data_f[data_f$d_time_cuts_prev == 'T1', ]
-df <- data_f[data_f$d_time_cuts_prev == 'T0', ]
-summary(df$d_time_cuts_prev) # only T0 and T1 should have >0
+# Combine results into a single data frame:
+did_results_df <- do.call(rbind, did_results_list)
 
-
-model_1 <- glm(model_formula,
-               data = df, # or e.g. pre_T0
-               family = binomial
-               )
-
-# Summarize the model
-res1 <- summary(model_1)
-str(res1)
-res1
-###
-
-
-###
-# DiD:
-# Set-up formula:
-mod_spec <- sprintf("%s ~ d_intervention + d_intervention * d_time_cuts_prev", outcome_var)
-mod_spec
-model_formula <- as.formula(mod_spec)
-model_formula
-
-
-# Data to test:
-colnames(data_f)
-summary(data_f$d_time_cuts_prev)
-df_T0 <- data_f[data_f$d_time_cuts_prev == 'T0', ]
-df_T1 <- data_f[data_f$d_time_cuts_prev == 'T1', ]
-
-df_T0 # TO DO: check as whole rows with NA's
-df_T1
-
-# df <- rbind(df_T0, df_T1)
-df <- df_T0
-df[, 'd_time_cuts_prev']
-summary(df$d_time_cuts_prev) # only T0 and T1 should have >0
-
-
-# Simple DiD:
-model_2 <- glm(model_formula,
-               data = df, # or e.g. pre_T0
-               family = binomial
-               )
-# Summarize the model
-str(model_2)
-res <- summary(model_2)
-res
-###
-############
-
-
-############
-# Setup covariates
-# Run simple (above) then adjusted for various models
-
-colnames(data_f)
-summary(data_f$SECTOR)
-summary(data_f$ORIGEN)
-summary(data_f)
-
-colnames(data_f)
-
-# Excluded, admin vars:
-# "ID_REGISTRO"
-# "FECHA_ACTUALIZACION"
-
-# Would correlate:
-# "FECHA_DEF"
-# "ENTIDAD_UM" # because it determines d_intervention
-# "MUNICIPIO_RES" # would correlate with ENTIDAD_UM but need to check
-# "ENTIDAD_NAC" # would correlate with ENTIDAD_UM but need to check
-# "ENTIDAD_RES" # would correlate with ENTIDAD_UM but need to check
-# "d_days_to_death"
-
-
-# Unsure:
-extra_check <- c("FECHA_INGRESO", # surv analysis will account for it
-                 "FECHA_SINTOMAS" # need to check db manual
-                 )
-
-# Covariates:
-covars <- c("d_intervention",
-            # "d_time_cuts", # exclude for now as running models for each cut
-            "EDAD",
-            "ORIGEN",
-            "SECTOR",
-            "SEXO",
-            # "TIPO_PACIENTE", # errors, don't know why
-            # "INTUBADO", # high NA's
-            "NEUMONIA",
-            "NACIONALIDAD",
-            # "EMBARAZO", # errors, don't know why; high NA's
-            # "HABLA_LENGUA_INDIG", # errors, don't know why
-            "INDIGENA",
-            "DIABETES",
-            "EPOC",
-            "ASMA",
-            "INMUSUPR",
-            "HIPERTENSION",
-            "OTRA_COM",
-            "CARDIOVASCULAR",
-            "OBESIDAD",
-            "RENAL_CRONICA",
-            "TABAQUISMO",
-            "OTRO_CASO"
-            # "TOMA_MUESTRA_LAB", # admin var, may correlate
-            # "RESULTADO_LAB", # admin var, may correlate
-            # "TOMA_MUESTRA_ANTIGENO", # admin var, may correlate
-            # "RESULTADO_ANTIGENO", # admin var, may correlate
-            # "CLASIFICACION_FINAL", # admin var, may correlate
-            # "MIGRANTE", # errors, don't know why; high NA's
-            # "PAIS_NACIONALIDAD", # errors, don't know why
-            # "PAIS_ORIGEN", # errors, don't know why; high NA's
-            # "UCI" # high NA's
-            )
-
-# Use sub-sample:
-# df <- data_f
-df <- data_f_sub
-
-lapply(df[, covars], summary)
-
-# Setup formula:
-time_var <- 'd_days_to_death_30'
-
-# For GLMs:
-mod_spec_lm <- sprintf("%s ~ %s", outcome_var, paste(covars, collapse = " + "))
-mod_spec_lm
-mod_form_lm <- as.formula(mod_spec_lm)
-mod_form_lm
-############
-
-
-############
-# Basic DiD
-# Fit linear model
-
-DiD_formula <- as.formula(sprintf("%s ~ %s + d_intervention * d_time_cuts", # Needs interaction term
-                                  outcome_var, paste(covars, collapse = " + ")
-                                 )
-                          )
-DiD_formula
-
-model_DiD <- lm(DiD_formula, data = data_f)
-
-# Summarize model
-res_model_DiD <- summary(model_DiD)
-res_model_DiD
-
-# Tidy the model output
-tidy(res_model_DiD)
-############
-
-
-############
-# The end:
-# Save objects, to eg .RData file:
-folder <- '../data/processed'
-script <- '5a_DiD'
-infile_prefix
-suffix <- 'rdata.gzip'
-outfile <- sprintf(fmt = '%s/%s_%s.%s', folder, script, infile_prefix, suffix)
-outfile
-
-# Check and remove objects that are not necessary to save:
-object_sizes <- sapply(ls(), function(x) object.size(get(x)))
-object_sizes <- as.matrix(rev(sort(object_sizes))[1:10])
-object_sizes
-objects_to_save <- (c('data_f', 'infile_prefix', 'outfile'))
+# View(did_results_df)
 
 # Save:
-save(list = objects_to_save,
-     file = outfile,
-     compress = 'gzip'
-)
+file_n <- 'did_results_time_points_covars'
+suffix <- 'txt'
+outcome_var
+df_name
+outfile <- sprintf(fmt = '%s/%s_%s_%s.%s', infile_prefix, file_n, outcome_var, df_name, suffix)
+outfile
+epi_write(file_object = did_results_df,
+          file_name = outfile
+          )
+############
 
-# Remove/clean up session:
-all_objects <- ls()
-all_objects
-rm_list <- which(!all_objects %in% objects_to_save)
-all_objects[rm_list]
-rm(list = all_objects[rm_list])
-ls() # Anything defined after all_objects and objects_to_save will still be here
 
-sessionInfo()
-# q()
 
-# Next: run the script for xxx
+############
+# No changes to the rdata file loaded, no need to save again.
+# # The end:
+# # Save objects, to eg .RData file:
+# folder <- '../data/processed'
+# script <- 'xxx'
+# infile_prefix
+# suffix <- 'rdata.gzip'
+# outfile <- sprintf(fmt = '%s/%s_%s.%s', folder, script, infile_prefix, suffix)
+# outfile
+# 
+# # Check and remove objects that are not necessary to save:
+# object_sizes <- sapply(ls(), function(x) object.size(get(x)))
+# object_sizes <- as.matrix(rev(sort(object_sizes))[1:10])
+# object_sizes
+# objects_to_save <- (c('df', 'infile_prefix', 'outfile'))
+# 
+# # Save:
+# save(list = objects_to_save,
+#      file = outfile,
+#      compress = 'gzip'
+# )
+# 
+# # Remove/clean up session:
+# all_objects <- ls()
+# all_objects
+# rm_list <- which(!all_objects %in% objects_to_save)
+# all_objects[rm_list]
+# rm(list = all_objects[rm_list])
+# ls() # Anything defined after all_objects and objects_to_save will still be here
+# 
+# sessionInfo()
+
+# Saving screen outputs:
+sink()
+
+# # q()
+# 
+# # Next: run the script for xxx
 ############

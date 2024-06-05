@@ -126,73 +126,11 @@ df[[intervention_var]]
 
 ###
 # Set-up covariates
-# Run simple (above) then adjusted for various models
-
-colnames(df)
-summary(df$SECTOR)
-summary(df$ORIGEN)
-summary(df)
-
-colnames(df)
-
-# Excluded, admin vars:
-# "ID_REGISTRO"
-# "FECHA_ACTUALIZACION"
-
-# Would correlate:
-# "FECHA_DEF"
-# "ENTIDAD_UM" # because it determines d_intervention
-# "MUNICIPIO_RES" # would correlate with ENTIDAD_UM but need to check
-# "ENTIDAD_NAC" # would correlate with ENTIDAD_UM but need to check
-# "ENTIDAD_RES" # would correlate with ENTIDAD_UM but need to check
-# "d_days_to_death"
-
-
-# Unsure:
-extra_check <- c("FECHA_INGRESO", # surv analysis will account for it
-                 "FECHA_SINTOMAS" # need to check db manual
-                 )
-
-# Covariates:
-covars <- c(intervention_var,
-            # "d_time_cuts", # exclude for now as running models for each cut
-            "EDAD",
-            "ORIGEN",
-            # "SECTOR", # High VIF (>10), exclude
-            "SEXO",
-            # "TIPO_PACIENTE", # errors, don't know why
-            # "INTUBADO", # high NA's
-            "NEUMONIA",
-            "NACIONALIDAD",
-            # "EMBARAZO", # errors, don't know why; high NA's
-            # "HABLA_LENGUA_INDIG", # errors, don't know why
-            "INDIGENA",
-            # "DIABETES", # collinear with HIPERTENSION
-            "EPOC",
-            "ASMA",
-            "INMUSUPR",
-            "HIPERTENSION",
-            "OTRA_COM",
-            "CARDIOVASCULAR",
-            "OBESIDAD",
-            "RENAL_CRONICA",
-            "TABAQUISMO",
-            "OTRO_CASO"
-            # "TOMA_MUESTRA_LAB", # admin var, may correlate
-            # "RESULTADO_LAB", # admin var, may correlate
-            # "TOMA_MUESTRA_ANTIGENO", # admin var, may correlate
-            # "RESULTADO_ANTIGENO", # admin var, may correlate
-            # "CLASIFICACION_FINAL", # admin var, may correlate
-            # "MIGRANTE", # errors, don't know why; high NA's
-            # "PAIS_NACIONALIDAD", # errors, don't know why
-            # "PAIS_ORIGEN", # errors, don't know why; high NA's
-            # "UCI" # high NA's
-            )
-
-lapply(df[, covars], summary)
+covars <- covars
+print(covars)
+# from 5_regression_setup.R
 ###
 
-# TO DO: continue here
 
 ###
 # Initialize storage for results, already have proportions, tables and chi-sq:

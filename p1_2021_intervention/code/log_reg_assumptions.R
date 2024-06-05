@@ -4,13 +4,10 @@
 
 ###
 # Box-Tidwell Test for Linearity of Logit
-# Checking the assumptions for logistic regression is crucial to ensure the validity and reliability of the model. Here are the key assumptions and methods to check them:
-# 
-# 1. Linearity of the Logits
+
 # The relationship between the predictors and the log-odds of the outcome should be linear. This can be checked using:
-# 
-# Box-Tidwell Test: For continuous variables.
-# Interaction Terms: Including interaction terms between continuous predictors and their logarithms.
+# Box-Tidwell Test: For continuous variables
+# Interaction Terms: Including interaction terms between continuous predictors and their logarithms
 
 # Simulated data
 set.seed(123)
