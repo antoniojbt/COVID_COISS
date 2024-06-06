@@ -34,62 +34,55 @@
 # Univariate
   # All, COVID-only
   # Re-run code above for plots and stats but COVID-only
+  # Run chi2
 
 # Bivariate
   # For COVID-only_COISS-only:
   # By outcome: survivors vs non-survivors
-###
 
+# Script 4a could be cleaned up but OK for now, worked as exploratory for 2021-2022 databases. If running/joining others then simplify as complication are the T0, T1 T2 windows for analysis.
 
-###
-# TO DOs:
-  # Script 4a could be cleaned up but OK for now, worked as exploratory for 2021-2022 databases. If running/joining others then simplify as complication are the T0, T1 T2 windows for analysis.
-  # Finish pretty plots:
-    # KM by date cut off and intervention
-    # plot of counts and proportions by date, outcome, and intervention, see script 3a
-
-  # setup HPC scripts as models take too long
-  # Run DiD as primary analysis; followed by eg Cox or MLM
-  # Check assumptions: independence, expected frequencies, sample size
-  # plot/check residuals, R2, etc
-  # Easy to digest presentation
-  # Competing Risks Analysis?
-
-# Done:
+# Regressions:
+  # Simple survival model
+  # Discuss date cut-off (T2 is truncated)
   # needs proper selection of covariates
   # check problems with missing data, exclude vars based on this
   # Create a table of counts, proportions, etc. for simple overview
   # Save tables, see tendency
   # change follow-up to 30 days, replot 4a script with this
+  # re-check NAs for death at script 4
+  # Use 30-day mortality
+  # Subset data to time cuts; check dates ie T1 vs T0, etc as each 'T' already encompasses start and end dates
+  # Get standard tables and risk  
+  # Pretty KM plot  
 
+
+###
+
+
+###
+# TO DOs:
+  # Run DiD as sensitivity analysis:
+    # Check assumptions: independence, expected frequencies, sample size
+    # plot/check residuals, R2, etc
+    # Easy to digest presentation
+  # Reproduce results from paper
+
+  # Finish pretty plots:
+    # KM by date cut off and intervention
+    # plot of counts and proportions by date, outcome, and intervention, see script 3a
 
 # Q's:
   # There are gaps between dates for start and end for T0, 1 and 2
   # Check max symptoms here is after FECHA_ACTUALIZACION
-  # re-check NAs for death at script 4
   # Are re-admissions an issue? e.g. violate independence assumption
-  # Use 30-day mortality
-
-# Run as sensitivity analyses:
-  # Reproduce results from paper  
-  # Diff in Diff
-  # Mixed effects model
-
-# Regressions:
-  # Done:
-    # Subset data to time cuts; check dates ie T1 vs T0, etc as each 'T' already encompasses start and end dates
-    # Get standard tables and risk  
-    # Pretty KM plot  
-  
-  # Pending:
-    # Run chi2
-    # Survival model
-    # Diff in diff
-    # MLM
-    # Discuss date cut-off (T2 is truncated)
-    # Arrange call to understand COVID data collection and database methods
 
 # Write-up
+
+# Clean-up:
+  # Check TO DOs within each script
+  # Move any remaining functions to episcout (marked by 'TO DO', otherwise already moved)
+  # Update episcout
 ###
 
 
@@ -106,15 +99,11 @@
   # Additional bivariate:
     # COVID vs non-COVID
     # Gender, age, etc
-###
 
-
-###
-# Notes:
-# Median Survival Time: The median survival time is the time at which 50% of the study population is expected to have experienced the event. If the median survival time is not reached, it means that less than 50% of the participants have experienced the event by the end of the study period.
-# Censoring: High censoring can occur if a significant proportion of participants are still alive or event-free at the study's conclusion. This can lead to the median survival time being undefined.
-# Longer Follow-up Needed: The study might need a longer follow-up period to observe more events and possibly reach the median survival time.
-
+  # setup HPC scripts as models take too long
+  # Cox or MLM
+  # Competing Risks Analysis?  
+  # Plan additional questions for full dataset
 ###
 ############
 
@@ -355,6 +344,7 @@ dim(data_f)
 table(data_f$ORIGEN)
 var_fact <- data_f$ORIGEN
 labels_desc <- c("USMER", "FUERA DE USMER")
+# Unidades Monitoras de Enfermedad Respiratoria Viral (USMER) 
 # levs <- c(1:2)
 # Reassign levels and labels to the factor
 var_fact <- factor(var_fact,

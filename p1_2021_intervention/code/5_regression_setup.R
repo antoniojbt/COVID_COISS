@@ -205,10 +205,10 @@ extra_check <- c("FECHA_INGRESO", # surv analysis will account for it
                  )
 
 # Covariates:
-covars <- c(intervention_var,
+covars <- c(#intervention_var, # include separately as changes depending on analysis
             # "d_time_cuts", # exclude for now as running models for each cut
             "EDAD",
-            "ORIGEN",
+            # "ORIGEN", # exclude, admin to some extent
             # "SECTOR", # High VIF (>10), exclude
             "SEXO",
             # "TIPO_PACIENTE", # errors, don't know why
@@ -227,8 +227,8 @@ covars <- c(intervention_var,
             "CARDIOVASCULAR",
             "OBESIDAD",
             "RENAL_CRONICA",
-            "TABAQUISMO",
-            "OTRO_CASO"
+            "TABAQUISMO" #,
+            # "OTRO_CASO" # unsure how to interpret
             # "TOMA_MUESTRA_LAB", # admin var, may correlate
             # "RESULTADO_LAB", # admin var, may correlate
             # "TOMA_MUESTRA_ANTIGENO", # admin var, may correlate
@@ -283,6 +283,8 @@ object_sizes
 objects_to_save <- (c('data_f', 'data_f_T1', 'data_f_T2', 'infile_prefix', 'outfile',
                       'time_cuts', 'deaths_periods_list', 'df_time_cuts', 'covars'
                       ))
+length(objects_to_save)
+length(objects_to_save) == length(objects_to_save %in% ls())
 
 # Save:
 save(list = objects_to_save,
