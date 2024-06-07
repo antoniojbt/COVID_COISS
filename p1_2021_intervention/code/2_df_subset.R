@@ -716,7 +716,7 @@ outfile
 object_sizes <- sapply(ls(), function(x) object.size(get(x)))
 object_sizes <- as.matrix(rev(sort(object_sizes))[1:10])
 object_sizes
-objects_to_save <- (c('data_f', 'infile_prefix', 'outfile'))
+objects_to_save <- c('data_f', 'infile_prefix', 'outfile')
 
 # Save:
 save(list = objects_to_save,

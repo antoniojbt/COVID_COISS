@@ -6,7 +6,7 @@
 # Difference in difference regression model
 
 # Input is output from script 5_regression_setup.R
-# Output are various tables from DiD regression analysis for each of the intervention groups (T1 group and T2 group). No rdata or full dataset.
+# Output are various tables from DiD regression analysis for each of the intervention groups (T1 group and T2 group). An rdata is saved to pass on for assumption checking.
 ############
 
 
@@ -27,6 +27,7 @@ library(tidyverse)
 library(broom)
 library(survival)
 library(survminer)
+library(car)
 ############
 
 
@@ -519,7 +520,6 @@ It should closely match the univariate DiD however.
 
 ###
 
-
 analysis_var_df
 covars
 
@@ -566,8 +566,58 @@ outfile
 epi_write(file_object = df_cox_did_covar_mod,
           file_name = outfile
           )
+###
 
 
+###
+# Assumptions check for adjusted DiD model
+
+# Test the proportional hazards assumption:
+ph_test <- cox.zph(cox_did_covar_mod)
+
+print(ph_test)
+
+# Schoenfeld residuals:
+plot(ph_test)
+# scaled Schoenfeld residuals against time. If the proportional hazards assumption holds, the residuals should be randomly scattered around zero with no apparent pattern. A systematic trend may indicate a violation of the assumption.
+
+# For T1:
+# Global violation
+# EDAD, NEUMONIA, d_pre_post also significant
+
+# For T2:
+# Global violation
+# EDAD, NEUMONIA, d_pre_post also significant
+
+
+# Martingale residuals plot for continuous vars (EDAD):
+# Extract the subset of data used in the model, complete cases only:
+covars
+model_data <- df[complete.cases(df[, c(covars, intervention_var, "d_pre_post")]), ]
+model_data
+
+# Calculate residuals:
+residuals_martingale <- residuals(cox_did_covar_mod, type = "martingale")
+
+# Ensure lengths match:
+length(model_data$EDAD) == length(residuals_martingale)
+
+# Plot martingale residuals against age:
+scatter.smooth(model_data$EDAD,
+               residuals_martingale,
+               xlab = "Age (EDAD)",
+               ylab = "Martingale Residuals",
+               main = "Martingale Residuals vs. Age"
+               )
+
+# For T2:
+# Cox PH assumption not met (!)
+# Moved to 5c_DiD_assumptions.R script to explore other formulas and problem variables.
+###
+
+
+###
+# Overall interpretation
 print('Interpretation for T1:')
 cat('\n
 # The hazard of death for the intervention group (COISS) compared to the control group at baseline is slightly higher (~3%), but not statistically significant (p = 0.538).
@@ -583,6 +633,8 @@ cat('\n
 - The model with predictors is significantly better than the null model (p < 2e-16 for LRT).
 - Predictors collectively have significant effects (p < 2e-16 Wald test).
 - Compared to the null model, the adjusted model significantly improves the fit (p < 2e-16, logrank test).
+
+# However, the PH assumption is not met (!).
 ')
 
 
@@ -599,9 +651,9 @@ cat('\n
 # Other covariates are largely as for T1, with large and significant effects for age, male gender, and comorbities, particularly pneumonia with a hazard odds of 18.
 
 # The model fit is highly predictive and improved over the null. 
+
+# However, the PH assumption is not met (!).
 ')
-
-
 ###
 
 
@@ -670,49 +722,59 @@ cat('\n
 # plot(surv_fit, col = 1:4, lty = 1:4, xlab = "Time (days)", ylab = "Survival Probability")
 # legend("topright", legend = c("Control Pre", "Control Post", "Intervention Pre", "Intervention Post"), col = 1:4, lty = 1:4)
 ###
-########
-###
 ############
 
 
 
 ############
-# No changes to the rdata file loaded, no need to save again.
-# # The end:
-# # Save objects, to eg .RData file:
-# folder <- '../data/processed'
-# script <- 'xxx'
-# infile_prefix
-# suffix <- 'rdata.gzip'
-# outfile <- sprintf(fmt = '%s/%s_%s.%s', folder, script, infile_prefix, suffix)
-# outfile
-# 
-# # Check and remove objects that are not necessary to save:
-# object_sizes <- sapply(ls(), function(x) object.size(get(x)))
-# object_sizes <- as.matrix(rev(sort(object_sizes))[1:10])
-# object_sizes
-# objects_to_save <- (c('df', 'infile_prefix', 'outfile'))
-# 
-# # Save:
-# save(list = objects_to_save,
-#      file = outfile,
-#      compress = 'gzip'
-# )
-# 
-# # Remove/clean up session:
-# all_objects <- ls()
-# all_objects
-# rm_list <- which(!all_objects %in% objects_to_save)
-# all_objects[rm_list]
-# rm(list = all_objects[rm_list])
-# ls() # Anything defined after all_objects and objects_to_save will still be here
-# 
+# The end:
+# Save objects, to eg .RData file:
+folder <- '../data/processed'
+script <- '5c_DiD_R'
+infile_prefix
+suffix <- 'rdata.gzip'
+outfile <- sprintf(fmt = '%s/%s_%s.%s', folder, script, infile_prefix, suffix)
+outfile
+
+# Check and remove objects that are not necessary to save:
+ls()
+object_sizes <- sapply(ls(), function(x) object.size(get(x)))
+object_sizes <- as.matrix(rev(sort(object_sizes))[1:10])
+object_sizes
+# From loadd objects from script 5_regression_setup.R:
+objects_to_save <- c('data_f', 'data_f_T1', 'data_f_T2', 'infile_prefix', 'outfile',
+                      'time_cuts', 'deaths_periods_list', 'df_time_cuts', 'covars'
+                      )
+
+# From this script:
+dfs_to_save <- c('df', 'df_analysis_cut', 'df_baseline')
+objects_to_save <- c(objects_to_save, analysis_var_names, dfs_to_save,
+                     'analysis_var_df'
+                     )
+
+length(objects_to_save)
+length(objects_to_save) == length(objects_to_save %in% ls())
+
+# Save:
+save(list = objects_to_save,
+     file = outfile,
+     compress = 'gzip'
+     )
+
+# Remove/clean up session:
+all_objects <- ls()
+all_objects
+rm_list <- which(!all_objects %in% objects_to_save)
+all_objects[rm_list]
+rm(list = all_objects[rm_list])
+ls() # Anything defined after all_objects and objects_to_save will still be here
+
 sessionInfo()
 
 # Saving screen outputs:
 sink()
 
 # # q()
-# 
+#
 # # Next: run the script for xxx
 ############

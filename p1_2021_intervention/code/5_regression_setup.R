@@ -280,9 +280,10 @@ outfile
 object_sizes <- sapply(ls(), function(x) object.size(get(x)))
 object_sizes <- as.matrix(rev(sort(object_sizes))[1:10])
 object_sizes
-objects_to_save <- (c('data_f', 'data_f_T1', 'data_f_T2', 'infile_prefix', 'outfile',
+objects_to_save <- c('data_f', 'data_f_T1', 'data_f_T2', 'infile_prefix', 'outfile',
                       'time_cuts', 'deaths_periods_list', 'df_time_cuts', 'covars'
-                      ))
+                      )
+
 length(objects_to_save)
 length(objects_to_save) == length(objects_to_save %in% ls())
 
