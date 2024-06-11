@@ -120,7 +120,7 @@ df[[intervention_var]]
 ###
 # Analyse covariates and outcome vars to check colinearity and other issues
 # See code snippets from log_reg_assumptions.R and covar_selection.R
-# Done in covar?_selection.R
+# Done in covar_selection.R
 ###
 
 

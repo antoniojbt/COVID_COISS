@@ -64,32 +64,32 @@ data_f_T2 <- data_f_T2 # to remove RStudio warnings
 # Set-up analysis variables
 
 # Outcome variable:
-outcome_var <- 'd_death_30'
-# outcome_var <- 'd_death'
+# outcome_var <- 'd_death_30'
+outcome_var <- 'd_death'
 
 # Time to event variable:
-time_var <- 'd_days_to_death_30'
-# time_var <- 'd_days_to_death'
+# time_var <- 'd_days_to_death_30'
+time_var <- 'd_days_to_death'
 
 # Intervention group variable:
-# intervention_var <- 'd_intervention_T1'
-intervention_var <- 'd_intervention_T2'
+intervention_var <- 'd_intervention_T1'
+# intervention_var <- 'd_intervention_T2'
 
 # Data frame in use:
-# df_name <- 'data_f_T1' # or 'data_f_T2' ; 'data_f' ; 'data_f_sub'
-df_name <- 'data_f_T2'
+df_name <- 'data_f_T1' # or 'data_f_T2' ; 'data_f' ; 'data_f_sub'
+# df_name <- 'data_f_T2'
 
 # Name of df:
-# df <- data_f_T1 # or data_f_T2 ; data_f ; data_f_sub
-df <- data_f_T2
+df <- data_f_T1 # or data_f_T2 ; data_f ; data_f_sub
+# df <- data_f_T2
 
 # Analysis window:
-# analysis_cut <- 'T1'
-analysis_cut <- 'T2'
+analysis_cut <- 'T1'
+# analysis_cut <- 'T2'
 
 # Events for specific window variable:
-# events_analysis_cut <- 'd_T1_outcome' # or 'd_T2_outcome' ; 'd_T0_outcome' ; etc
-events_analysis_cut <- 'd_T2_outcome'
+events_analysis_cut <- 'd_T1_outcome' # or 'd_T2_outcome' ; 'd_T0_outcome' ; etc
+# events_analysis_cut <- 'd_T2_outcome'
 
 # Baseline window variable:
 baseline_cut <- 'T0' # could be pre-T0 but not in design
