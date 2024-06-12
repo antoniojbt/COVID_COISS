@@ -39,9 +39,7 @@ library(rsample)
 
 # Load .RData file:
 infile <- "../data/processed/5c_DiD_R_COVID19MEXICO_2021_2022_COVID-only_COISS-only.rdata.gzip"
-load(infile,
-     verbose = TRUE
-     )
+load(infile, verbose = TRUE)
 data_f <- data_f # just to get rid of RStudio warnings
 dim(data_f)
 str(data_f)
@@ -111,21 +109,23 @@ print('File loaded:')
 print(infile)
 print('Loaded data and objects:')
 ls()
+# sink()
 ############
 
 
 
 ############
-# TO DO:
 # Split data or run with cross-validation
+# TO DO: Set manually
+
 set.seed(123)
 
 # Split the data into training and test sets:
 split <- rsample::initial_split(df, prop = 0.7)
-train_data <- rsample::training(split)
-test_data <- rsample::testing(split)
+df_train <- rsample::training(split)
+df_test <- rsample::testing(split)
 
-df <- train_data
+df <- df_train
 
 # # Cross validation:
 # train_control <- caret::trainControl(method = "cv", number = 10)
@@ -384,8 +384,8 @@ print(vif_results)
 
 
 ###
-covars_final <- c('d_days_to_death',
-                  'd_death',
+covars_final <- c(time_var,
+                  outcome_var,
                   'EDAD_piecewise',
                   'NEUMONIA',
                   'RENAL_CRONICA',
@@ -397,10 +397,16 @@ covars_final <- c('d_days_to_death',
                   'INMUSUPR',
                   'HIPERTENSION',
                   'OBESIDAD',
-                  'd_intervention_T1'
+                  intervention_var
                   )
-summary(df$d_days_to_death)
-summary(df$d_death)
+# NACIONALIDAD + # removing as non-significant, parsimony
+# INDIGENA + # removing as non-significant, parsimony
+# EPOC + # removing as non-significant, parsimony
+# TABAQUISMO + # removing as non-significant, parsimony
+
+summary(df[[outcome_var]])
+summary(df[[time_var]])
+summary(df[[intervention_var]])
 summary(df[, covars_final])
 
 # Remove missing values:
@@ -502,7 +508,7 @@ epi_plot_cow_save(file_name = outfile,
 ###
 # TO DO:
 # Check model diagnostics:
-cox_snell <- resid(cox_model_td, type = "martingale")
+cox_snell <- resid(various_mods, type = "martingale")
 plot(cox_snell, main = "Cox-Snell Residuals", ylab = "Residuals", xlab = "Time")
 # Finally, evaluate the model to ensure that the proportional hazards assumption is satisfied and the model fits the data well.
 

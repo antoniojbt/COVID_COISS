@@ -62,6 +62,7 @@ data_f_T2 <- data_f_T2 # to remove RStudio warnings
 
 ############
 # Set-up analysis variables
+# TO DO: Set manually
 
 # Outcome variable:
 # outcome_var <- 'd_death_30'
@@ -95,7 +96,6 @@ events_analysis_cut <- 'd_T1_outcome' # or 'd_T2_outcome' ; 'd_T0_outcome' ; etc
 baseline_cut <- 'T0' # could be pre-T0 but not in design
 events_baseline <- 'd_T0_outcome' # or 'd_T1_outcome' ; 'd_T0_outcome' ; 'd_T1_outcome' ; 'd_T2_outcome'
 ############
-
 
 
 ############
@@ -170,6 +170,8 @@ time_cuts <- time_cuts
 # Data to test
 # Subset baseline and analysis window data
 
+###
+# TO DO: Set manually
 summary(data_f$d_time_cuts_prev)
 summary(df$d_time_cuts_prev) # this will be subset with either T1 states or T2 states as intervention groups changed; all time-cuts should be > 1
 
@@ -192,6 +194,26 @@ stopifnot(sum(df$d_time_cuts_prev == analysis_cut) > 1)
 
 summary(df[[intervention_var]]) # There shouldn't be an 'other' category
 stopifnot(length(df[[intervention_var]]) > 1)
+###
+
+
+###
+# TO DO: Set manually
+# a variable indicating whether the period is before or after the intervention
+# Because the data frame df in this script is subset to baseline and analysis windows, e.g. T0 with T1, there is effectively a pre/post difference for the regression. Convert to integer:
+summary(df$d_time_cuts_prev)
+epi_head_and_tail(df[df$d_time_cuts_prev == baseline_cut, ])
+epi_head_and_tail(df[df$d_time_cuts_prev == analysis_cut, ])
+# So pre = baseline_cut and post = analysis_cut
+# There are no NA's
+df$d_pre_post <- ifelse(df$d_time_cuts_prev == analysis_cut, 1, 0)
+df$d_pre_post <- as.integer(df$d_pre_post)
+typeof(df$d_pre_post)
+summary(factor(df$d_pre_post))
+summary(df$d_time_cuts_prev) # should match the time cuts
+
+interv_period <- 'd_pre_post'
+###
 ############
 
 
@@ -398,6 +420,17 @@ cat('\n
 ############
 # The univariate DiD should match a simple DiD regression model
 # Interaction term between the group and the intervention period
+# Use of interaction terms in Cox: test whether the effect of one predictor variable on the hazard rate depends on the level of another predictor variable. Useful to test whether effects are not only additive. i.e.:
+# Main effects for intervention variable on the hazard rate
+# Main effects for before and after status variable on the hazard rate
+# Interaction effects: captures the combined effect of being in the intervention group and the d_pre_post status on the hazard rate.
+# DiD: estimates the causal effect of the intervention by comparing the changes in outcomes over time between a group that receives the intervention and a group that does not. The interaction term is the DiD estimate where the combined effect of being in the intervention group and the post-intervention period is captured. In other words, it estimates the additional effect of the intervention beyond any changes that would occur over time regardless of the intervention. Specifically, it models the difference in the hazard rate between the intervention and control groups before and after the intervention.
+
+# So, for main effects:
+# d_intervention_T2COISS: baseline difference in the hazard rate between the intervention and control groups, before the intervention
+# d_pre_post: change in the hazard rate over time for the control group (from pre to post intervention)
+# For interaction term:
+# The additional change in the hazard rate for the intervention group, over and above the changes observed in the control group accounting for the passage of time.
 
 
 ###
@@ -426,19 +459,7 @@ time_cuts
 intervention_var
 
 # a variable indicating whether the period is before or after the intervention
-# Because the data frame df in this script is subset to baseline and analysis windows, e.g. T0 with T1, there is effectively a pre/post difference for the regression. Convert to integer:
-summary(df$d_time_cuts_prev)
-epi_head_and_tail(df[df$d_time_cuts_prev == baseline_cut, ])
-epi_head_and_tail(df[df$d_time_cuts_prev == analysis_cut, ])
-# So pre = baseline_cut and post = analysis_cut
-# There are no NA's
-df$d_pre_post <- ifelse(df$d_time_cuts_prev == analysis_cut, 1, 0)
-df$d_pre_post <- as.integer(df$d_pre_post)
-typeof(df$d_pre_post)
-summary(factor(df$d_pre_post))
-summary(df$d_time_cuts_prev) # should match the time cuts
-
-interv_period <- 'd_pre_post'
+# defined above
 ###
 
 

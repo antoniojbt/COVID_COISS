@@ -246,7 +246,6 @@ lapply(df[, covars], summary)
 
 
 ############
-# # TO DO:
 # # Create sub-samples if needed and save them in rdata file
 # # Run sub_sampling script as taking too long to get regressions
 # # Test code first with sub-sample:
