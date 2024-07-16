@@ -58,6 +58,25 @@ time_cuts <- time_cuts
 # Time windows:
 epi_head_and_tail(df_time_cuts$T0)
 epi_head_and_tail(df_time_cuts$T2)
+
+# Intervention group  by window:
+summary(df_time_cuts$T0$d_intervention_T2)
+summary(df_time_cuts$T2$d_intervention_T2)
+
+# Outcome by window:
+summary(factor(df_time_cuts$T0$d_T0_outcome))
+summary(factor(df_time_cuts$T2$d_T2_outcome))
+
+
+# Outcome by window and intervention group:
+table(factor(df_time_cuts$T0$d_T0_outcome),
+      factor(df_time_cuts$T0$d_intervention_T2)
+      )
+
+
+table(factor(df_time_cuts$T2$d_T2_outcome),
+      factor(df_time_cuts$T2$d_intervention_T2)
+      )
 ############
 
 
@@ -81,6 +100,7 @@ summary(factor(df_time_cuts$T2$d_intervention_T2))
 # Get age groups:
 df_T0 <- df_time_cuts$T0
 df_T2 <- df_time_cuts$T2
+
 
 # Bin:
 df_T0$d_age_groups <- cut(df_T0$EDAD,
@@ -157,7 +177,6 @@ outfile
 epi_write(file_object = tab_age_grps_T2,
           file_name = outfile
           )
-
 ###
 
 # ###
@@ -172,6 +191,71 @@ epi_write(file_object = tab_age_grps_T2,
 #                        bootstrap_options = c("striped", "hover", "condensed")
 #                        )
 # ###
+
+
+###
+# Tables by outcome and age group for events only
+
+# T0
+# Subset for events only:
+summary(factor(df_T0$d_T0_outcome))
+df_T0_events <- df_T0[df_T0$d_T0_outcome == 1, ]
+df_T0_events
+
+tab_age_grps_T0_events <- as.data.frame(table(df_T0_events$d_age_groups,
+                                              df_T0_events$d_intervention_T2)
+                                        )
+# Drop 'other' as not needed:
+tab_age_grps_T0_events <- tab_age_grps_T0_events[tab_age_grps_T0_events$Var2 != 'other', ]
+# Column names:
+colnames(tab_age_grps_T0_events) <- c('Age group', 'Intervention group', 'Count')
+# Add percentage:
+tab_age_grps_T0_events$Percentage <- round(tab_age_grps_T0_events$Count / sum(tab_age_grps_T0_events$Count) * 100, 2)
+tab_age_grps_T0_events
+
+
+# Save:
+file_n <- 'age_intervent_grp_table_events'
+suffix <- 'txt'
+df_name <- 'T0_for_T2'
+outfile <- sprintf(fmt = '%s/%s_%s.%s', infile_prefix, file_n, df_name, suffix)
+outfile
+epi_write(file_object = tab_age_grps_T0_events,
+          file_name = outfile
+          )
+###
+
+
+###
+# T2:
+# Subset for events only:
+summary(factor(df_T2$d_T2_outcome))
+df_T2_events <- df_T2[df_T2$d_T2_outcome == 1, ]
+df_T2_events
+
+tab_age_grps_T2_events <- as.data.frame(table(df_T2_events$d_age_groups,
+                                              df_T2_events$d_intervention_T2)
+                                        )
+tab_age_grps_T2_events <- tab_age_grps_T2_events[tab_age_grps_T2_events$Var2 != 'other', ]
+# Column names:
+colnames(tab_age_grps_T2_events) <- c('Age group', 'Intervention group', 'Count')
+# Add percentage:
+tab_age_grps_T2_events$Percentage <- round(tab_age_grps_T2_events$Count / sum(tab_age_grps_T2_events$Count) * 100, 2)
+tab_age_grps_T2_events
+
+
+
+
+# Save:
+file_n <- 'age_intervent_grp_table_events'
+suffix <- 'txt'
+df_name <- 'T2'
+outfile <- sprintf(fmt = '%s/%s_%s.%s', infile_prefix, file_n, df_name, suffix)
+outfile
+epi_write(file_object = tab_age_grps_T2_events,
+          file_name = outfile
+          )
+###
 ############
 
 
